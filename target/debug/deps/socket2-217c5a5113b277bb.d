@@ -1,9 +1,0 @@
-C:\Storage\NL\target\debug\deps\socket2-217c5a5113b277bb.d: C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\lib.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\sockaddr.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\socket.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\sockref.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\sys\windows.rs
-
-C:\Storage\NL\target\debug\deps\libsocket2-217c5a5113b277bb.rmeta: C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\lib.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\sockaddr.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\socket.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\sockref.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\sys\windows.rs
-
-C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\lib.rs:
-C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\sockaddr.rs:
-C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\socket.rs:
-C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\sockref.rs:
-C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.3\src\sys\windows.rs:
