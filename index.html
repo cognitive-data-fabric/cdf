@@ -7,7 +7,7 @@
     <meta name="description" content="CDF unifies vector, graph, and temporal data with native uncertainty handling. One engine for AI-native applications.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="site/css/style.css">
+    <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
 </head>
 <body>
@@ -26,7 +26,7 @@
                 <li><a href="#learning" class="nav-link">Learning</a></li>
                 <li><a href="#about" class="nav-link">About</a></li>
                 <li><a href="#search" class="nav-link">Search</a></li>
-                <li><a href="#contact" class="nav-link">Contact</a></li>
+                <li><a href="#collaborate" class="nav-link">Collaborate</a></li>
                 <li><a href="https://github.com/cognitive-data-fabric/cdf" class="nav-link nav-cta" target="_blank">GitHub ↗</a></li>
             </ul>
         </div>
@@ -332,81 +332,63 @@ paths = client.traverse(<span class="token-string">"paper-001"</span>, edge_type
         </div>
     </section>
 
-    <!-- Contact -->
-    <section id="contact" class="contact">
+    <!-- Collaborate / Support -->
+    <section id="collaborate" class="contact">
         <div class="section-header">
-            <span class="section-tag">Connect</span>
-            <h2 class="section-title">Get <span class="gradient-text">Support</span></h2>
-            <p class="section-desc">Questions, feedback, or ready to contribute? We're here.</p>
+            <span class="section-tag">Collaborate</span>
+            <h2 class="section-title">Join the <span class="gradient-text">Community</span></h2>
+            <p class="section-desc">CDF is open source. Everyone is welcome to use, improve, and share ideas.</p>
         </div>
 
         <div class="contact-grid">
-            <div class="contact-form-wrap">
-                <form class="contact-form" id="contactForm">
-                    <div class="form-group">
-                        <label for="name">Name</label>
-                        <input type="text" id="name" name="name" placeholder="Your name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" name="email" placeholder="you@example.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="topic">Topic</label>
-                        <select id="topic" name="topic">
-                            <option value="general">General Question</option>
-                            <option value="bug">Bug Report</option>
-                            <option value="feature">Feature Request</option>
-                            <option value="contribute">Want to Contribute</option>
-                            <option value="enterprise">Enterprise Support</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="message">Message</label>
-                        <textarea id="message" name="message" rows="5" placeholder="How can we help?" required></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-full">Create GitHub Issue</button>
-                    <p class="form-note">Submits directly to <a href="https://github.com/cognitive-data-fabric/cdf/issues" target="_blank">GitHub Issues</a> with your details pre-filled.</p>
-                </form>
-            </div>
-
-            <div class="contact-channels">
-                <h3>Connect With Us</h3>
-                <div class="channel-list">
-                    <a href="https://github.com/cognitive-data-fabric/cdf/issues" class="channel" target="_blank">
+            <div class="contact-channels" style="grid-column: 1 / -1; max-width: 900px; margin: 0 auto; width: 100%;">
+                <div class="channel-list" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); display: grid; gap: 20px;">
+                    <a href="https://github.com/cognitive-data-fabric/cdf/issues/new?labels=question&title=[Question]%20" class="channel" target="_blank" id="issueCard">
                         <div class="channel-icon">🐛</div>
                         <div class="channel-info">
-                            <h4>GitHub Issues</h4>
-                            <p>Report bugs and request features</p>
+                            <h4>Report an Issue</h4>
+                            <p>Found a bug? Request a feature? Open a GitHub Issue.</p>
                         </div>
                     </a>
-                    <a href="https://github.com/cognitive-data-fabric/cdf/discussions" class="channel" target="_blank">
+                    <a href="https://github.com/cognitive-data-fabric/cdf/discussions/new?category=general" class="channel" target="_blank" id="discussionCard">
                         <div class="channel-icon">💬</div>
                         <div class="channel-info">
-                            <h4>Discussions</h4>
-                            <p>Ask questions and share ideas</p>
+                            <h4>Start a Discussion</h4>
+                            <p>Share ideas, ask questions, or propose improvements.</p>
                         </div>
                     </a>
-                    <a href="https://discord.gg/cdf" class="channel" target="_blank">
-                        <div class="channel-icon">🎮</div>
+                    <a href="https://github.com/cognitive-data-fabric/cdf/fork" class="channel" target="_blank">
+                        <div class="channel-icon">🍴</div>
                         <div class="channel-info">
-                            <h4>Discord Community</h4>
-                            <p>Real-time chat with the team</p>
+                            <h4>Fork & Contribute</h4>
+                            <p>Clone the repo, make changes, and submit a Pull Request.</p>
                         </div>
                     </a>
-                    <a href="mailto:team@cognitive-data-fabric.io" class="channel">
-                        <div class="channel-icon">✉️</div>
+                    <a href="https://github.com/cognitive-data-fabric/cdf/blob/main/CONTRIBUTING.md" class="channel" target="_blank">
+                        <div class="channel-icon">📋</div>
                         <div class="channel-info">
-                            <h4>Email</h4>
-                            <p>team@cognitive-data-fabric.io</p>
+                            <h4>Contributing Guide</h4>
+                            <p>Setup, code style, and PR workflow explained.</p>
                         </div>
                     </a>
                 </div>
 
-                <div class="support-hours">
-                    <h4>📅 Support Hours</h4>
-                    <p>Community: 24/7 on Discord & GitHub<br>
-                    Core Team: Mon–Fri, 9:00–18:00 UTC</p>
+                <!-- Inline discussion starter -->
+                <div class="discussion-starter" style="margin-top: 40px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 32px;">
+                    <h3 style="margin-bottom: 8px; font-size: 1.2rem;">💡 Have something to share?</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.95rem;">Write your message below and we'll take you to GitHub Discussions with everything pre-filled.</p>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <input type="text" id="discTitle" placeholder="Title of your idea or question" style="width: 100%; padding: 12px 16px; background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <textarea id="discBody" rows="4" placeholder="Describe your idea, question, or feedback..." style="width: 100%; padding: 12px 16px; background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; resize: vertical;"></textarea>
+                    </div>
+                    <button class="btn btn-primary" id="discBtn" style="width: 100%; justify-content: center;">Post to GitHub Discussions</button>
+                </div>
+
+                <div class="support-hours" style="margin-top: 32px; text-align: center;">
+                    <h4>📅 Community Hours</h4>
+                    <p>All collaboration happens on GitHub — Issues for bugs, Discussions for ideas.<br>Responses typically within 24–48 hours.</p>
                 </div>
             </div>
         </div>
@@ -438,7 +420,7 @@ paths = client.traverse(<span class="token-string">"paper-001"</span>, edge_type
                 <div class="footer-col">
                     <h4>Community</h4>
                     <a href="https://github.com/cognitive-data-fabric/cdf" target="_blank">GitHub</a>
-                    <a href="https://discord.gg/cdf" target="_blank">Discord</a>
+                    <a href="https://github.com/cognitive-data-fabric/cdf/discussions" target="_blank">Discussions</a>
                     <a href="https://github.com/cognitive-data-fabric/cdf/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a>
                     <a href="https://github.com/cognitive-data-fabric/cdf/blob/main/CODE_OF_CONDUCT.md" target="_blank">Code of Conduct</a>
                 </div>
@@ -452,6 +434,6 @@ paths = client.traverse(<span class="token-string">"paper-001"</span>, edge_type
     <!-- Toast notification -->
     <div class="toast" id="toast"></div>
 
-    <script src="site/js/app.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

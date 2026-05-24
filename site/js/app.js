@@ -412,41 +412,30 @@ function initDemo() {
 // Contact Form
 // ============================================
 function initContactForm() {
-  const form = document.getElementById("contactForm");
-  if (!form) return;
+  // Inline discussion starter for GitHub Discussions
+  const discBtn = document.getElementById("discBtn");
+  if (discBtn) {
+    discBtn.addEventListener("click", () => {
+      const title = document.getElementById("discTitle").value.trim();
+      const body = document.getElementById("discBody").value.trim();
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const topic = document.getElementById("topic").value;
-    const message = document.getElementById("message").value;
+      if (!title || !body) {
+        showToast("Please fill in both title and message.");
+        return;
+      }
 
-    const labels = {
-      general: "question",
-      bug: "bug",
-      feature: "enhancement",
-      contribute: "help wanted",
-      enterprise: "enterprise",
-    };
+      const encTitle = encodeURIComponent(title);
+      const encBody = encodeURIComponent(
+        `${body}\n\n---\n_Posted via [Cognitive Data Fabric](https://cognitive-data-fabric.github.io/) website._`,
+      );
+      const url = `https://github.com/cognitive-data-fabric/cdf/discussions/new?category=general&title=${encTitle}&body=${encBody}`;
+      window.open(url, "_blank");
 
-    const title = encodeURIComponent(
-      `[${topic.toUpperCase()}] Feedback from ${name}`,
-    );
-    const body = encodeURIComponent(
-      `**Submitted via:** Cognitive Data Fabric website\n` +
-        `**Name:** ${name}\n` +
-        `**Email:** ${email}\n` +
-        `**Topic:** ${topic}\n` +
-        `**Message:**\n\n${message}\n\n---\n` +
-        `_This issue was auto-generated from the website contact form._`,
-    );
-    const label = labels[topic] || "question";
-
-    const url = `https://github.com/cognitive-data-fabric/cdf/issues/new?title=${title}&body=${body}&labels=${label}`;
-    window.open(url, "_blank");
-    form.reset();
-  });
+      document.getElementById("discTitle").value = "";
+      document.getElementById("discBody").value = "";
+      showToast("Opening GitHub Discussions...");
+    });
+  }
 }
 
 function showToast(message) {
