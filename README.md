@@ -231,6 +231,112 @@ curl -X POST http://localhost:8080/v1/query \
   }'
 ```
 
+### 🔐 Access Control (RBAC + ACL)
+
+CDF uses **Role-Based Access Control** (RBAC) combined with fine-grained **Access Control Lists** (ACL).
+
+#### Role Hierarchy (higher implies lower)
+
+| Role           | Level | What They Can Do                                   |
+| -------------- | ----- | -------------------------------------------------- |
+| **SuperAdmin** | 5     | Full system access, user management, cluster ops   |
+| **Admin**      | 4     | Namespace management, schema evolution, ACL grants |
+| **Developer**  | 3     | CRUD on tables, index creation, graph edges        |
+| **Analyst**    | 2     | Read-only queries and vector search                |
+| **Service**    | 1     | Service-to-service auth, no human login            |
+
+#### ACL Granularity — Per-Resource Permissions
+
+| Resource Type   | Permissions Available                         |
+| --------------- | --------------------------------------------- |
+| **Table**       | `Create`, `Read`, `Update`, `Delete`, `Admin` |
+| **VectorIndex** | `Search`, `Insert`, `DeleteIndex`             |
+| **Graph**       | `Traverse`, `ReadEdges`, `WriteEdges`         |
+| **Schema**      | `Alter`, `Evolve`, `Register`                 |
+| **Cluster**     | `NodeJoin`, `ShardRebalance`, `Backup`        |
+
+ACL entries support **expiration** and **conditional rules** (time-based, IP-based).
+
+#### Creating Users and Granting Access (Python SDK)
+
+```python
+from cdf_client import CdfClient, ApiKeyAuth
+
+client = CdfClient("http://localhost:8080", auth=ApiKeyAuth("your-api-key"))
+
+# 1. Create a user with a role
+client.admin.create_user(
+    username="alice",
+    email="alice@example.com",
+    password="secret",
+    roles=["developer"]  # Options: superadmin, admin, developer, analyst, service
+)
+
+# 2. Grant ACL on a specific table
+client.admin.grant_acl(
+    principal_id="alice-id",
+    resource_type="table",
+    resource_id="documents",
+    actions=["read", "write"],
+    namespace="default"
+)
+
+# 3. Grant vector search-only access (Analyst pattern)
+client.admin.grant_acl(
+    principal_id="bob-id",
+    resource_type="vector_index",
+    resource_id="papers",
+    actions=["search"],
+    namespace="default"
+)
+
+# 4. Grant graph traversal access
+client.admin.grant_acl(
+    principal_id="alice-id",
+    resource_type="graph",
+    resource_id="citations",
+    actions=["traverse", "read_edges"],
+    namespace="default"
+)
+
+# 5. Grant with expiration (time-bound access)
+client.admin.grant_acl(
+    principal_id="contractor-id",
+    resource_type="table",
+    resource_id="sensitive_data",
+    actions=["read"],
+    namespace="default",
+    expires_at="2026-12-31T23:59:59Z"
+)
+
+# 6. Revoke an ACL
+client.admin.revoke_acl(
+    principal_id="alice-id",
+    resource_type="table",
+    resource_id="documents",
+    namespace="default"
+)
+
+# 7. List all ACLs for a user
+acls = client.admin.list_acls(principal_id="alice-id")
+for acl in acls:
+    print(acl.resource_type, acl.resource_id, acl.actions)
+```
+
+#### Role-to-Default-Permission Mapping
+
+| Role       | Default Table Access                  | Default Vector Access         | Default Graph Access              |
+| ---------- | ------------------------------------- | ----------------------------- | --------------------------------- |
+| SuperAdmin | `Create, Read, Update, Delete, Admin` | `Search, Insert, DeleteIndex` | `Traverse, ReadEdges, WriteEdges` |
+| Admin      | `Create, Read, Update, Delete, Admin` | `Search, Insert`              | `Traverse, ReadEdges`             |
+| Developer  | `Create, Read, Update, Delete`        | `Search, Insert`              | `Traverse, ReadEdges, WriteEdges` |
+| Analyst    | `Read`                                | `Search`                      | `Traverse`                        |
+| Service    | `Read`                                | `Search`                      | `Traverse`                        |
+
+> **Note:** Explicit ACL grants override role defaults. A Developer with a revoked `Delete` ACL on `documents` cannot delete from that table, even though Developers normally can.
+
+---
+
 ### 🗂 Storing Different Data Types
 
 CDF is **poly-modal** — one row can hold any combination of these value types:
