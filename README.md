@@ -337,6 +337,154 @@ for acl in acls:
 
 ---
 
+### 🔌 Consuming CDF in Your Applications
+
+CDF exposes a **REST API** on port `8080` and provides a **Python SDK** (`cdf-client`). Any language can call the REST endpoints directly.
+
+#### Install the Python SDK
+
+```bash
+pip install -e ./sdk/python   # from repo root
+# or after publishing:
+# pip install cdf-client
+```
+
+#### Authentication
+
+```python
+from cdf_client import CdfClient, ApiKeyAuth, JwtAuth
+
+# Option 1: API Key (for services, scripts)
+client = CdfClient("http://localhost:8080", auth=ApiKeyAuth("your-api-key"))
+
+# Option 2: JWT (for users, auto-refreshes)
+client = CdfClient("http://localhost:8080", auth=JwtAuth("alice", "secret"))
+```
+
+#### Data Operations (CdfClient)
+
+| Method                               | What it does          | Example                                                 |
+| ------------------------------------ | --------------------- | ------------------------------------------------------- |
+| `health()`                           | Cluster health check  | `client.health()`                                       |
+| `create_table(name, schema)`         | Create a table        | `client.create_table("documents", {"title": "string"})` |
+| `list_tables(namespace)`             | List tables           | `client.list_tables("default")`                         |
+| `insert(table, data)`                | Insert one row        | `client.insert("papers", {...})`                        |
+| `batch_insert(table, rows)`          | Insert many rows      | `client.batch_insert("papers", [row1, row2])`           |
+| `get(table, row_id)`                 | Fetch by ID           | `client.get("papers", "paper-123")`                     |
+| `update(table, row_id, data)`        | Update row            | `client.update("papers", "paper-123", {...})`           |
+| `delete(table, row_id)`              | Delete row            | `client.delete("papers", "paper-123")`                  |
+| `query(cql)`                         | CQL query             | `client.query("SELECT * FROM papers")`                  |
+| `search(table, vector, top_k)`       | Vector ANN search     | `client.search("papers", [0.1, 0.2], top_k=5)`          |
+| `search_text(table, text)`           | Text → embed → search | `client.search_text("papers", "transformers")`          |
+| `add_edge(from, to, type)`           | Graph edge            | `client.add_edge("A", "B", "cites")`                    |
+| `traverse(start, edge_types, depth)` | Graph BFS             | `client.traverse("A", ["cites"], depth=2)`              |
+| `neighbors(node, edge_type)`         | Immediate neighbors   | `client.neighbors("A", "cites")`                        |
+| `subscribe(table)`                   | SSE stream of changes | `client.subscribe("papers")`                            |
+
+#### Admin Operations (`client.admin`)
+
+| Method                                                | What it does          |
+| ----------------------------------------------------- | --------------------- |
+| `admin.create_user(username, email, password, roles)` | Create user           |
+| `admin.list_users(namespace, role)`                   | List/filter users     |
+| `admin.update_user(user_id, roles, disabled)`         | Update user           |
+| `admin.delete_user(user_id)`                          | Delete user           |
+| `admin.create_api_key(name, user_id, roles)`          | Create API key        |
+| `admin.revoke_api_key(key_id)`                        | Revoke API key        |
+| `admin.grant_acl(...)`                                | Grant resource ACL    |
+| `admin.revoke_acl(...)`                               | Revoke ACL            |
+| `admin.list_acl(principal_id, resource_type)`         | Query ACLs            |
+| `admin.create_namespace(name)`                        | Create namespace      |
+| `admin.delete_namespace(name, force)`                 | Delete namespace      |
+| `admin.cluster_status()`                              | Cluster health        |
+| `admin.list_nodes()`                                  | List nodes            |
+| `admin.drain_node(node_id)`                           | Drain for maintenance |
+| `admin.rebalance_shards()`                            | Rebalance             |
+| `admin.create_backup(name, tables)`                   | Backup                |
+| `admin.restore_backup(backup_id)`                     | Restore               |
+| `admin.list_audit_logs(...)`                          | Audit trail           |
+| `admin.register_schema(name, schema)`                 | Register schema       |
+| `admin.evolve_schema(name, changes)`                  | Evolve schema         |
+
+#### Complete Application Example
+
+```python
+from cdf_client import CdfClient, ApiKeyAuth
+
+# 1. Connect
+client = CdfClient("http://localhost:8080", auth=ApiKeyAuth("dev-key"))
+
+# 2. Create a table with mixed data types
+client.create_table("research_papers", namespace="ml", schema={
+    "title": {"type": "string", "required": True},
+    "abstract": {"type": "text"},
+    "embedding": {"type": "vector", "dimensions": 384, "metric": "cosine"},
+    "confidence": {"type": "distribution"},
+    "pdf_url": {"type": "blob_ref"},
+    "citations": {"type": "graph_edges"}
+})
+
+# 3. Insert a paper with vector + graph + scalar
+paper = client.insert("research_papers", {
+    "title": "Attention Is All You Need",
+    "abstract": "We propose a new simple network architecture...",
+    "embedding": {"model_id": "all-MiniLM-L6-v2", "values": [0.1, 0.2, ...]},
+    "confidence": {"mean": 0.95, "std_dev": 0.02},
+    "pdf_url": "blob://a1b2c3d4...",  # MinIO content hash
+    "year": 2017
+}, namespace="ml")
+
+paper_id = paper["row_id"]
+
+# 4. Add citation edges (graph)
+client.add_edge(paper_id, "paper-456", "cites", namespace="ml")
+client.add_edge(paper_id, "paper-789", "cites", namespace="ml")
+
+# 5. Semantic search
+results = client.search("research_papers", vector=[0.1, 0.2, ...], top_k=5, namespace="ml")
+for r in results:
+    print(r["title"], r["score"])
+
+# 6. Graph traversal — papers cited by this paper
+cited = client.traverse(paper_id, edge_types=["cites"], depth=1, namespace="ml")
+
+# 7. CQL query combining vector + graph + filter
+response = client.query("""
+    SELECT title, confidence
+    FROM research_papers
+    WHERE embedding SIMILAR TO :query WITH THRESHOLD 0.85
+      AND year > 2020
+      AND EXISTS PATH paper ->[cites]-> (paper.year > 2023)
+""", params={"query": [0.1, 0.2, ...]})
+
+# 8. Subscribe to real-time changes
+for event in client.subscribe("research_papers", namespace="ml"):
+    print(event.event, event.data)
+```
+
+#### REST API Endpoints (for non-Python clients)
+
+| Method   | Endpoint                     | Body / Params                                                 | Description   |
+| -------- | ---------------------------- | ------------------------------------------------------------- | ------------- |
+| `GET`    | `/health`                    | —                                                             | Health check  |
+| `POST`   | `/v1/insert`                 | `{"table", "data", "namespace"}`                              | Insert row    |
+| `POST`   | `/v1/batch_insert`           | `{"table", "rows", "namespace"}`                              | Batch insert  |
+| `GET`    | `/v1/rows/{ns}/{table}/{id}` | —                                                             | Get row       |
+| `PUT`    | `/v1/update`                 | `{"table", "row_id", "data"}`                                 | Update row    |
+| `DELETE` | `/v1/rows/{ns}/{table}/{id}` | —                                                             | Delete row    |
+| `POST`   | `/v1/query`                  | `{"query", "params"}`                                         | CQL query     |
+| `POST`   | `/v1/search`                 | `{"table", "vector", "top_k", "threshold"}`                   | Vector search |
+| `POST`   | `/v1/search_text`            | `{"table", "text", "top_k"}`                                  | Text search   |
+| `POST`   | `/v1/graph/edges`            | `{"from_id", "to_id", "edge_type"}`                           | Add edge      |
+| `GET`    | `/v1/graph/traverse`         | `?start_id&depth&edge_types`                                  | Traverse      |
+| `GET`    | `/v1/graph/neighbors`        | `?node_id&edge_type`                                          | Neighbors     |
+| `GET`    | `/v1/subscribe`              | `?table&namespace&events`                                     | SSE stream    |
+| `POST`   | `/v1/auth/token`             | `{"username", "password"}`                                    | Login         |
+| `POST`   | `/v1/admin/users`            | `{"username", "email", "password", "roles"}`                  | Create user   |
+| `POST`   | `/v1/admin/acl`              | `{"principal_id", "resource_type", "resource_id", "actions"}` | Grant ACL     |
+
+---
+
 ### 🗂 Storing Different Data Types
 
 CDF is **poly-modal** — one row can hold any combination of these value types:
