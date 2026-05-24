@@ -1,0 +1,12 @@
+C:\Storage\NL\target\debug\deps\serde-dbfd95e1e3555273.d: C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Storage\NL\target\debug\build\serde-8c3044f2974d8331\out/private.rs
+
+C:\Storage\NL\target\debug\deps\libserde-dbfd95e1e3555273.rmeta: C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Storage\NL\target\debug\build\serde-8c3044f2974d8331\out/private.rs
+
+C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs:
+C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs:
+C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs:
+C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs:
+C:\Users\i9159.LAPTOP-GFKK4DNR\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs:
+C:\Storage\NL\target\debug\build\serde-8c3044f2974d8331\out/private.rs:
+
+# env-dep:OUT_DIR=C:\\Storage\\NL\\target\\debug\\build\\serde-8c3044f2974d8331\\out

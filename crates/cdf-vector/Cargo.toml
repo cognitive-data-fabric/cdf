@@ -1,0 +1,17 @@
+[package]
+name = "cdf-vector"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+cdf-common = { workspace = true }
+rand = "0.8"
+rayon = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }

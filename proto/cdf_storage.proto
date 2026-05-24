@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package cdf.storage;
+
+import "proto/cdf_common.proto";
+
+option go_package = "github.com/cognitive-data-fabric/cdf/proto/storage";
+
+// Write path
+message WriteRequest {
+  string table = 1;
+  repeated PolyRow rows = 2;
+}
+
+message PolyRow {
+  Uuid row_id = 1;
+  map<string, PolyValue> columns = 2;
+  TemporalBounds temporal = 3;
+}
+
+message WriteResponse {
+  repeated Uuid inserted_ids = 1;
+  uint64 sequence_number = 2;
+}
+
+// Read path
+message ReadRequest {
+  string table = 1;
+  QueryFilter filter = 2;
+  VectorQuery vector_query = 3;
+  TemporalQuery temporal_query = 4;
+}
+
+message QueryFilter {
+  repeated Condition conditions = 1;
+  enum CombineOp { AND = 0; OR = 1; }
+  CombineOp combine = 2;
+}
+
+message Condition {
+  string column = 1;
+  string op = 2; // =, !=, <, >, <=, >=, LIKE, IN
+  PolyValue value = 3;
+}
+
+message VectorQuery {
+  string column = 1;
+  VectorEmbedding query_vector = 2;
+  float threshold = 3;
+  uint32 top_k = 4;
+}
+
+message TemporalQuery {
+  Timestamp as_of_valid = 1;
+  Timestamp as_of_transaction = 2;
+}
+
+message ReadResponse {
+  repeated PolyRow rows = 1;
+  bool has_more = 2;
+  bytes continuation_token = 3;
+}
+
+// Graph traversal
+message GraphTraverseRequest {
+  Uuid start_node = 1;
+  repeated string edge_types = 2;
+  uint32 max_depth = 3;
+  VectorQuery vector_context = 4;
+}
+
+message GraphPath {
+  repeated Uuid node_ids = 1;
+  repeated string edge_types = 2;
+}
+
+message GraphTraverseResponse {
+  repeated GraphPath paths = 1;
+}
+
+service StorageNode {
+  rpc Write(WriteRequest) returns (WriteResponse);
+  rpc Read(ReadRequest) returns (stream ReadResponse);
+  rpc GraphTraverse(GraphTraverseRequest) returns (GraphTraverseResponse);
+}

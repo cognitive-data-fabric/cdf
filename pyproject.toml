@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cognitive-data-fabric"
+version = "0.1.0"
+description = "AI-native database with unified semantic, graph, and temporal storage"
+requires-python = ">=3.10"
+license = { text = "MIT OR Apache-2.0" }
+authors = [
+    { name = "Cognitive Data Fabric Team" }
+]
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "sentence-transformers>=2.5.0",
+    "torch>=2.2.0",
+    "numpy>=1.26.0",
+    "scipy>=1.12.0",
+    "scikit-learn>=1.4.0",
+    "grpcio>=1.62.0",
+    "grpcio-tools>=1.62.0",
+    "prometheus-client>=0.20.0",
+    "structlog>=24.1.0",
+    "pydantic>=2.6.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.27.0",
+    "pillow>=10.2.0",
+    "transformers>=4.38.0",
+    "opentelemetry-api>=1.23.0",
+    "opentelemetry-sdk>=1.23.0",
+    "opentelemetry-instrumentation-fastapi>=0.44.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "black>=24.0.0",
+    "mypy>=1.8.0",
+    "ruff>=0.2.0",
+    "pre-commit>=3.6.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ai-services"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "W", "UP", "B", "C4"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["ai-services/tests"]

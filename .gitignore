@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+vendor/
+__pycache__/
+*.egg-info/
+.venv/
+env/
+venv/
+
+# Build outputs
+dist/
+build/
+out/
+*.tgz
+*.tar.gz
+
+# IDE and editors
+.idea/
+*.swp
+*.swo
+*~
+.vs/
+*.code-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker
+.docker/
+
+# Misc
+.cache/
+.parcel-cache/

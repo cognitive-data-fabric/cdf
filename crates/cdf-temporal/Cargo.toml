@@ -1,0 +1,10 @@
+[package]
+name = "cdf-temporal"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+cdf-common = { workspace = true }
+serde = { workspace = true }

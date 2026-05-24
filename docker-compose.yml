@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # Storage Nodes (Rust)
+  storage-node-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.storage
+    container_name: cdf-storage-1
+    ports:
+      - "50051:50051"
+    volumes:
+      - storage_data_1:/data
+    environment:
+      - CDF_NODE_ID=storage-1
+      - CDF_DATA_DIR=/data
+      - CDF_PORT=50051
+      - CDF_SHARD_RANGE=0-32767
+
+  storage-node-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.storage
+    container_name: cdf-storage-2
+    ports:
+      - "50052:50051"
+    volumes:
+      - storage_data_2:/data
+    environment:
+      - CDF_NODE_ID=storage-2
+      - CDF_DATA_DIR=/data
+      - CDF_PORT=50051
+      - CDF_SHARD_RANGE=32768-65535
+
+  # Query Router (Go)
+  router:
+    build:
+      context: .
+      dockerfile: Dockerfile.router
+    container_name: cdf-router
+    ports:
+      - "50050:50050"
+    depends_on:
+      - storage-node-1
+      - storage-node-2
+    environment:
+      - CDF_ROUTER_PORT=50050
+      - CDF_STORAGE_NODES=storage-node-1:50051,storage-node-2:50051
+
+  # API Gateway (Go)
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: cdf-gateway
+    ports:
+      - "8080:8080"
+      - "50053:50053"
+    depends_on:
+      - router
+      - meta
+    environment:
+      - CDF_HTTP_PORT=8080
+      - CDF_GRPC_PORT=50053
+      - CDF_ROUTER_ADDR=router:50050
+
+  # Meta Service (Go)
+  meta:
+    build:
+      context: .
+      dockerfile: Dockerfile.meta
+    container_name: cdf-meta
+    ports:
+      - "50054:50054"
+    environment:
+      - CDF_META_PORT=50054
+
+  # Embedding Service (Python)
+  embed-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.embed
+    container_name: cdf-embed
+    ports:
+      - "8001:8001"
+    environment:
+      - MODEL_CACHE_DIR=/models
+      - PORT=8001
+    volumes:
+      - model_cache:/models
+
+  # Drift Detector (Python)
+  drift-detector:
+    build:
+      context: .
+      dockerfile: Dockerfile.drift
+    container_name: cdf-drift
+    ports:
+      - "8002:8002"
+    depends_on:
+      - embed-service
+    environment:
+      - PORT=8002
+      - EMBED_SERVICE_URL=http://embed-service:8001
+
+  # Redis for caching and pub/sub
+  redis:
+    image: redis:7-alpine
+    container_name: cdf-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # MinIO for blob storage
+  minio:
+    image: minio/minio:latest
+    container_name: cdf-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
+volumes:
+  storage_data_1:
+  storage_data_2:
+  model_cache:
+  redis_data:
+  minio_data:
