@@ -1,9 +1,8 @@
-FROM rust:1.75-alpine AS builder
+FROM rust:1.86-alpine AS builder
 RUN apk add --no-cache musl-dev
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
-COPY crates/cdf-common crates/cdf-common
-COPY crates/cdf-storage crates/cdf-storage
+COPY crates/ crates/
 RUN cargo build --release -p cdf-storage
 
 FROM alpine:latest

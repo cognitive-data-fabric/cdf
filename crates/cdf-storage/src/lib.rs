@@ -6,7 +6,9 @@ pub mod memtable;
 pub mod compact;
 pub mod engine;
 
-pub use engine::StorageEngine;
+pub use engine::{StorageEngine, EngineConfig};
+
+pub type Result<T> = std::result::Result<T, cdf_common::CdfError>;
 
 use cdf_common::{FabricId, PolyRow, TemporalBounds, Timestamp};
 use serde::{Deserialize, Serialize};

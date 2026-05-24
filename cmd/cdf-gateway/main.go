@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -204,8 +205,8 @@ func (g *Gateway) executeVectorSearch(ctx context.Context, req *VectorSearchHTTP
 
 // HTTP request/response types
 type QueryHTTPRequest struct {
-	RequestID string `json:"request_id"`
-	CQL       string `json:"cql"`
+	RequestID string                 `json:"request_id"`
+	CQL       string                 `json:"cql"`
 	Params    map[string]interface{} `json:"params,omitempty"`
 }
 
@@ -234,10 +235,23 @@ type HTTPResponse struct {
 }
 
 func main() {
+	routerAddr := os.Getenv("CDF_ROUTER_ADDR")
+	if routerAddr == "" {
+		routerAddr = "localhost:50050"
+	}
+	httpPort := os.Getenv("CDF_HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "8080"
+	}
+	grpcPort := os.Getenv("CDF_GRPC_PORT")
+	if grpcPort == "" {
+		grpcPort = "50053"
+	}
+
 	gateway := NewGateway(
-		"localhost:50050", // router
-		":8080",           // HTTP
-		":50053",          // gRPC
+		routerAddr,   // router
+		":"+httpPort, // HTTP
+		":"+grpcPort, // gRPC
 	)
 
 	log.Fatal(gateway.Run())

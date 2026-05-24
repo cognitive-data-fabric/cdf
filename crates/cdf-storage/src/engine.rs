@@ -64,7 +64,8 @@ impl StorageEngine {
     }
 
     pub async fn insert(&self, table: &str, row: PolyRow) -> Result<FabricId> {
-        let key = RowKey::new(table, row.id);
+        let row_id = row.id;
+        let key = RowKey::new(table, row_id);
         let value = InternalValue::Active(row);
 
         // 1. Append to WAL
@@ -96,7 +97,7 @@ impl StorageEngine {
 
         self.sequence
             .store(seq, std::sync::atomic::Ordering::Relaxed);
-        Ok(key.row_id)
+        Ok(row_id)
     }
 
     pub async fn get(&self, table: &str, id: FabricId) -> Result<Option<PolyRow>> {

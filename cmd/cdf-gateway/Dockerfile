@@ -1,7 +1,9 @@
 FROM golang:1.22-alpine AS builder
 WORKDIR /app
-COPY . .
-RUN go mod tidy && go build -o cdf-gateway .
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd/cdf-gateway ./cmd/cdf-gateway
+RUN go build -o cdf-gateway ./cmd/cdf-gateway
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates

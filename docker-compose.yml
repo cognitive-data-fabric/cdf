@@ -71,8 +71,8 @@ services:
 
   router:
     build:
-      context: ./cmd/cdf-router
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: cmd/cdf-router/Dockerfile
     container_name: cdf-router
     ports:
       - "50050:50050"
@@ -85,8 +85,8 @@ services:
 
   meta:
     build:
-      context: ./cmd/cdf-meta
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: cmd/cdf-meta/Dockerfile
     container_name: cdf-meta
     ports:
       - "50054:50054"
@@ -97,8 +97,8 @@ services:
 
   gateway:
     build:
-      context: ./cmd/cdf-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: cmd/cdf-gateway/Dockerfile
     container_name: cdf-gateway
     ports:
       - "8080:8080"
