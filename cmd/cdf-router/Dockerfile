@@ -5,7 +5,7 @@ RUN go mod download
 COPY cmd/cdf-router ./cmd/cdf-router
 RUN go build -o cdf-router ./cmd/cdf-router
 
-FROM alpine:latest
+FROM alpine:3.19
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/cdf-router .

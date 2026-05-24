@@ -16,6 +16,10 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+// Unused imports retained for future gRPC service registration
+var _ = grpc.NewServer
+var _ = reflection.Register
+
 // Gateway serves both HTTP REST and gRPC with WebSocket streaming
 type Gateway struct {
 	routerAddr string

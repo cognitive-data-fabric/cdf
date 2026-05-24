@@ -5,7 +5,7 @@ RUN go mod download
 COPY cmd/cdf-meta ./cmd/cdf-meta
 RUN go build -o cdf-meta ./cmd/cdf-meta
 
-FROM alpine:latest
+FROM alpine:3.19
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/cdf-meta .

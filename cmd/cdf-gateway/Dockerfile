@@ -5,7 +5,7 @@ RUN go mod download
 COPY cmd/cdf-gateway ./cmd/cdf-gateway
 RUN go build -o cdf-gateway ./cmd/cdf-gateway
 
-FROM alpine:latest
+FROM alpine:3.19
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/cdf-gateway .

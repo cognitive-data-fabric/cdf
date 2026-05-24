@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -13,11 +14,11 @@ import (
 
 // MetaService manages cluster membership, schema registry, and node health
 type MetaService struct {
-	mu          sync.RWMutex
-	members     map[string]*NodeMember
-	schemas     map[string]*TableSchema
-	leader      string
-	term        uint64
+	mu      sync.RWMutex
+	members map[string]*NodeMember
+	schemas map[string]*TableSchema
+	leader  string
+	term    uint64
 }
 
 type NodeMember struct {
@@ -95,9 +96,9 @@ func (m *MetaService) RegisterSchema(ctx context.Context, req *SchemaRequest) (*
 
 	m.schemas[req.Name] = &TableSchema{
 		Name:    req.Name,
-		Version:   req.Version,
-		Columns:   req.Columns,
-		Indexes:   req.Indexes,
+		Version: req.Version,
+		Columns: req.Columns,
+		Indexes: req.Indexes,
 	}
 
 	return &SchemaResponse{Status: "registered"}, nil
@@ -169,7 +170,19 @@ func main() {
 	meta := NewMetaService()
 	meta.leader = "meta-1"
 
-	lis, err := net.Listen("tcp", ":50054")
+	// Register self as initial member
+	meta.RegisterNode(context.Background(), &RegisterRequest{
+		NodeID:    "meta-1",
+		Address:   "localhost:50054",
+		Role:      "meta",
+		Timestamp: 0,
+	})
+
+	port := os.Getenv("CDF_META_PORT")
+	if port == "" {
+		port = "50054"
+	}
+	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}

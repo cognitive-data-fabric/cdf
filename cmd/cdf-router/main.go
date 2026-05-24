@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"sync"
 
@@ -14,13 +15,13 @@ import (
 
 // CQL Query structures
 type CQLQuery struct {
-	Select    []string
-	From      string
-	Where     *WhereClause
-	Vector    *VectorClause
-	Temporal  *TemporalClause
-	OrderBy   []OrderByExpr
-	Limit     int
+	Select   []string
+	From     string
+	Where    *WhereClause
+	Vector   *VectorClause
+	Temporal *TemporalClause
+	OrderBy  []OrderByExpr
+	Limit    int
 }
 
 type WhereClause struct {
@@ -53,9 +54,9 @@ type OrderByExpr struct {
 
 // ShardRouter distributes queries across storage nodes
 type ShardRouter struct {
-	mu        sync.RWMutex
-	shardMap  map[uint64]string // shard_id -> node_address
-	schema    map[string]*TableSchema
+	mu       sync.RWMutex
+	shardMap map[uint64]string // shard_id -> node_address
+	schema   map[string]*TableSchema
 }
 
 type TableSchema struct {
@@ -66,10 +67,10 @@ type TableSchema struct {
 type ColumnType string
 
 const (
-	TypeScalar     ColumnType = "scalar"
-	TypeVector     ColumnType = "vector"
-	TypeGraphEdge  ColumnType = "graph_edge"
-	TypeTemporal   ColumnType = "temporal"
+	TypeScalar    ColumnType = "scalar"
+	TypeVector    ColumnType = "vector"
+	TypeGraphEdge ColumnType = "graph_edge"
+	TypeTemporal  ColumnType = "temporal"
 )
 
 func NewShardRouter() *ShardRouter {
@@ -206,8 +207,22 @@ type QueryResponse struct {
 
 func main() {
 	router := NewShardRouter()
-	router.RegisterShard(0, "localhost:50051")
-	router.RegisterShard(1, "localhost:50052")
+
+	// Read storage nodes from environment
+	storageNodesEnv := os.Getenv("CDF_STORAGE_NODES")
+	if storageNodesEnv == "" {
+		storageNodesEnv = "localhost:50051,localhost:50052"
+	}
+
+	var shardID uint64
+	for _, addr := range strings.Split(storageNodesEnv, ",") {
+		addr = strings.TrimSpace(addr)
+		if addr != "" {
+			router.RegisterShard(shardID, addr)
+			shardID++
+		}
+	}
+	log.Printf("Registered %d shards", shardID)
 
 	// Test parsing
 	query, err := router.ParseCQL("SELECT id, embedding FROM documents WHERE type = 'pdf' LIMIT 10")
@@ -223,7 +238,11 @@ func main() {
 	log.Printf("Route to nodes: %v", nodes)
 
 	// Start gRPC server
-	lis, err := net.Listen("tcp", ":50050")
+	port := os.Getenv("CDF_ROUTER_PORT")
+	if port == "" {
+		port = "50050"
+	}
+	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
