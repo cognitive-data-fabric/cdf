@@ -7,8 +7,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: cdf-redis
-    ports:
-      - "6379:6379"
+    # Internal only — no host port mapping
     volumes:
       - redis_data:/data
     healthcheck:
@@ -20,9 +19,8 @@ services:
   minio:
     image: minio/minio:latest
     container_name: cdf-minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    # Internal only — no host port mapping
+    # Access via gateway or docker exec if needed for debugging
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -40,8 +38,7 @@ services:
       context: .
       dockerfile: crates/cdf-storage/Dockerfile
     container_name: cdf-storage-1
-    ports:
-      - "50051:50051"
+    # Internal only — accessed via Docker network by router/gateway
     environment:
       CDF_NODE_ID: storage-1
       CDF_DATA_DIR: /data
@@ -57,8 +54,7 @@ services:
       context: .
       dockerfile: crates/cdf-storage/Dockerfile
     container_name: cdf-storage-2
-    ports:
-      - "50052:50051"
+    # Internal only — accessed via Docker network by router/gateway
     environment:
       CDF_NODE_ID: storage-2
       CDF_DATA_DIR: /data
@@ -74,8 +70,7 @@ services:
       context: .
       dockerfile: cmd/cdf-router/Dockerfile
     container_name: cdf-router
-    ports:
-      - "50050:50050"
+    # Internal only — accessed via Docker network by gateway
     environment:
       CDF_ROUTER_PORT: 50050
       CDF_STORAGE_NODES: storage-node-1:50051,storage-node-2:50051
@@ -88,8 +83,7 @@ services:
       context: .
       dockerfile: cmd/cdf-meta/Dockerfile
     container_name: cdf-meta
-    ports:
-      - "50054:50054"
+    # Internal only — accessed via Docker network by gateway
     environment:
       CDF_META_PORT: 50054
     depends_on:
@@ -100,6 +94,7 @@ services:
       context: .
       dockerfile: cmd/cdf-gateway/Dockerfile
     container_name: cdf-gateway
+    # ONLY externally exposed port — all client traffic goes through here
     ports:
       - "8080:8080"
     environment:
@@ -119,8 +114,7 @@ services:
       context: ./ai-services/embed-service
       dockerfile: Dockerfile
     container_name: cdf-embed
-    ports:
-      - "8001:8001"
+    # Internal only — accessed via Docker network by gateway
     environment:
       MODEL_CACHE_DIR: /models
       PORT: 8001
@@ -133,8 +127,7 @@ services:
       context: ./ai-services/drift-detector
       dockerfile: Dockerfile
     container_name: cdf-drift
-    ports:
-      - "8002:8002"
+    # Internal only — accessed via Docker network by gateway
     environment:
       PORT: 8002
       EMBED_SERVICE_URL: http://embed-service:8001
