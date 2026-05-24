@@ -24,7 +24,7 @@ export class JwtAuth implements AuthProvider {
     private username: string,
     private password: string,
     private tokenUrl: string = "/v1/auth/token",
-    private client?: CdfClient,
+    private client?: any,
   ) {}
 
   getHeaders(): Record<string, string> {
@@ -41,6 +41,3 @@ export class JwtAuth implements AuthProvider {
     // Client will handle the actual refresh
   }
 }
-
-// Forward declaration to avoid circular dependency
-import type { CdfClient } from "./client";

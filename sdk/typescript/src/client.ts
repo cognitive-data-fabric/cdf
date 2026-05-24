@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from "axios";
+import { EventSource } from "eventsource";
 import { AuthProvider, ApiKeyAuth } from "./auth";
 import { CdfAdmin } from "./admin";
 
@@ -27,9 +28,11 @@ export class CdfClient {
       },
     });
 
-    this.http.interceptors.request.use((req) => {
-      req.headers = { ...req.headers, ...this.auth.getHeaders() };
-      return req;
+    this.http.interceptors.request.use((config) => {
+      Object.entries(this.auth.getHeaders()).forEach(([key, value]) => {
+        config.headers.set(key, value);
+      });
+      return config;
     });
   }
 
@@ -112,9 +115,12 @@ export class CdfClient {
     rowId: string,
     namespace = "default",
   ): Promise<Record<string, unknown> | null> {
-    return this.request("GET", `/v1/rows/${namespace}/${table}/${rowId}`).catch(
-      (err: any) => (err.response?.status === 404 ? null : Promise.reject(err)),
-    );
+    return this.request<Record<string, unknown>>(
+      "GET",
+      `/v1/rows/${namespace}/${table}/${rowId}`,
+    ).catch((err: any) =>
+      err.response?.status === 404 ? null : Promise.reject(err),
+    ) as Promise<Record<string, unknown> | null>;
   }
 
   update(
@@ -227,11 +233,8 @@ export class CdfClient {
   }
 
   // --- Streaming ---
-  subscribe(
-    table: string,
-    eventTypes?: string[],
-    namespace = "default",
-  ): EventSource {
+  subscribe(table: string, eventTypes?: string[], namespace = "default"): any {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { EventSource } = require("eventsource");
     const url = new URL(`${this.http.defaults.baseURL}/v1/subscribe`);
     url.searchParams.set("namespace", namespace);

@@ -1,3 +1,5 @@
+import { CdfAdmin } from "./admin.js";
+
 export class CdfClient {
   constructor({ baseUrl, auth, timeout = 30000, retries = 3 }) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -161,5 +163,3 @@ export class CdfClient {
     return this._admin;
   }
 }
-
-import { CdfAdmin } from "./admin.js";

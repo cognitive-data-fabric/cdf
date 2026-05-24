@@ -99,11 +99,17 @@ public class CdfClient implements AutoCloseable {
 
     // --- CRUD ---
     public JsonNode insert(String table, Map<String, Object> data) throws IOException {
-        return request("POST", "/v1/insert", mapper.valueToTree(Map.of("table", table, "data", data)));
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("table", table);
+        payload.put("data", data);
+        return request("POST", "/v1/insert", mapper.valueToTree(payload));
     }
 
     public JsonNode batchInsert(String table, List<Map<String, Object>> rows) throws IOException {
-        return request("POST", "/v1/batch_insert", mapper.valueToTree(Map.of("table", table, "rows", rows)));
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("table", table);
+        payload.put("rows", rows);
+        return request("POST", "/v1/batch_insert", mapper.valueToTree(payload));
     }
 
     public JsonNode get(String table, String rowId) throws IOException {
@@ -111,7 +117,11 @@ public class CdfClient implements AutoCloseable {
     }
 
     public JsonNode update(String table, String rowId, Map<String, Object> data) throws IOException {
-        return request("PUT", "/v1/update", mapper.valueToTree(Map.of("table", table, "row_id", rowId, "data", data)));
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("table", table);
+        payload.put("row_id", rowId);
+        payload.put("data", data);
+        return request("PUT", "/v1/update", mapper.valueToTree(payload));
     }
 
     public void delete(String table, String rowId) throws IOException {
@@ -120,27 +130,38 @@ public class CdfClient implements AutoCloseable {
 
     // --- Query ---
     public JsonNode query(String cql, Map<String, Object> params) throws IOException {
-        return request("POST", "/v1/query", mapper.valueToTree(Map.of("query", cql, "params", params)));
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("query", cql);
+        payload.put("params", params);
+        return request("POST", "/v1/query", mapper.valueToTree(payload));
     }
 
     // --- Vector Search ---
     public JsonNode search(String table, List<Double> vector, int topK, Double threshold) throws IOException {
-        Map<String, Object> payload = Map.of("table", table, "vector", vector, "top_k", topK);
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("table", table);
+        payload.put("vector", vector);
+        payload.put("top_k", topK);
         if (threshold != null)
             payload.put("threshold", threshold);
         return request("POST", "/v1/search", mapper.valueToTree(payload));
     }
 
     public JsonNode searchText(String table, String text, int topK) throws IOException {
-        return request("POST", "/v1/search_text",
-                mapper.valueToTree(Map.of("table", table, "text", text, "top_k", topK)));
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("table", table);
+        payload.put("text", text);
+        payload.put("top_k", topK);
+        return request("POST", "/v1/search_text", mapper.valueToTree(payload));
     }
 
     // --- Graph ---
     public JsonNode addEdge(String fromId, String toId, String edgeType, Map<String, Object> properties)
             throws IOException {
-        Map<String, Object> payload = new java.util.HashMap<>(
-                Map.of("from_id", fromId, "to_id", toId, "edge_type", edgeType));
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("from_id", fromId);
+        payload.put("to_id", toId);
+        payload.put("edge_type", edgeType);
         if (properties != null)
             payload.put("properties", properties);
         return request("POST", "/v1/graph/edges", mapper.valueToTree(payload));
@@ -148,8 +169,11 @@ public class CdfClient implements AutoCloseable {
 
     public JsonNode traverse(String startId, List<String> edgeTypes, int depth) throws IOException {
         String types = edgeTypes != null ? String.join(",", edgeTypes) : "";
-        return request("GET", "/v1/graph/traverse", null,
-                Map.of("start_id", startId, "depth", String.valueOf(depth), "edge_types", types));
+        Map<String, String> params = new java.util.HashMap<>();
+        params.put("start_id", startId);
+        params.put("depth", String.valueOf(depth));
+        params.put("edge_types", types);
+        return request("GET", "/v1/graph/traverse", null, params);
     }
 
     // --- Admin ---
