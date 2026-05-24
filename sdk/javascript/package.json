@@ -1,0 +1,19 @@
+{
+  "name": "@cognitive-data-fabric/cdf-client-js",
+  "version": "0.1.0",
+  "description": "JavaScript SDK for Cognitive Data Fabric",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "database",
+    "vector",
+    "graph",
+    "ai",
+    "semantic"
+  ],
+  "author": "CDF Team",
+  "license": "MIT OR Apache-2.0"
+}

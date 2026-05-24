@@ -1,0 +1,32 @@
+{
+  "name": "@cognitive-data-fabric/cdf-client",
+  "version": "0.1.0",
+  "description": "TypeScript/JavaScript SDK for Cognitive Data Fabric",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts"
+  },
+  "keywords": [
+    "database",
+    "vector",
+    "graph",
+    "ai",
+    "semantic"
+  ],
+  "author": "CDF Team",
+  "license": "MIT OR Apache-2.0",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "eventsource": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
