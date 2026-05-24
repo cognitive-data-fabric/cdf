@@ -1,33 +1,20 @@
-# Multi-stage Dockerfile for development and production
+# CDF Gateway — Multi-stage Dockerfile
+# Builds the Go gateway service for production deployment
 # Usage:
-#   Development: docker build --target dev -t myapp:dev .
-#   Production:  docker build --target prod -t myapp:latest .
-
-# --- Base Stage ---
-FROM node:20-alpine AS base
-WORKDIR /app
-RUN apk add --no-cache git
-
-# --- Development Stage ---
-FROM base AS dev
-ENV NODE_ENV=development
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD ["npm", "run", "dev"]
+#   docker build -t cdf-gateway .
+#   docker run -p 8080:8080 cdf-gateway
 
 # --- Build Stage ---
-FROM base AS build
-ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
+FROM golang:1.22-alpine AS builder
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd/ cmd/
+RUN CGO_ENABLED=0 GOOS=linux go build -o /cdf-gateway ./cmd/cdf-gateway
 
 # --- Production Stage ---
-FROM nginx:alpine AS prod
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+FROM alpine:3.19 AS prod
+RUN apk add --no-cache ca-certificates
+COPY --from=builder /cdf-gateway /usr/local/bin/cdf-gateway
+EXPOSE 8080 50053
+ENTRYPOINT ["cdf-gateway"]
