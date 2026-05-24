@@ -117,6 +117,63 @@ func (g *Gateway) runHTTPServer() {
 		json.NewEncoder(w).Encode(resp)
 	})
 
+	// REST: Create table endpoint
+	mux.HandleFunc("/v1/tables", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		var req CreateTableHTTPRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		resp := g.executeCreateTable(r.Context(), &req)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	// REST: Graph edges endpoint
+	mux.HandleFunc("/v1/graph/edges", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		var req GraphEdgeHTTPRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		resp := g.executeAddEdge(r.Context(), &req)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	// REST: Graph traverse endpoint
+	mux.HandleFunc("/v1/graph/traverse", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		var req GraphTraverseHTTPRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		resp := g.executeGraphTraverse(r.Context(), &req)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
 	// WebSocket upgrade for streaming queries
 	mux.HandleFunc("/v1/stream", func(w http.ResponseWriter, r *http.Request) {
 		// Production: upgrade to WebSocket with gorilla/websocket
@@ -229,6 +286,29 @@ type VectorSearchHTTPRequest struct {
 	Threshold float32   `json:"threshold,omitempty"`
 }
 
+type CreateTableHTTPRequest struct {
+	RequestID string                 `json:"request_id,omitempty"`
+	Name      string                 `json:"name"`
+	Namespace string                 `json:"namespace,omitempty"`
+	Schema    map[string]interface{} `json:"schema"`
+}
+
+type GraphEdgeHTTPRequest struct {
+	RequestID  string                 `json:"request_id,omitempty"`
+	Namespace  string                 `json:"namespace,omitempty"`
+	FromID     string                 `json:"from_id"`
+	ToID       string                 `json:"to_id"`
+	EdgeType   string                 `json:"edge_type"`
+	Properties map[string]interface{} `json:"properties,omitempty"`
+}
+
+type GraphTraverseHTTPRequest struct {
+	RequestID string   `json:"request_id,omitempty"`
+	StartID   string   `json:"start_id"`
+	EdgeTypes []string `json:"edge_types,omitempty"`
+	Depth     int      `json:"depth"`
+}
+
 type HTTPResponse struct {
 	RequestID string                   `json:"request_id"`
 	Status    string                   `json:"status"`
@@ -236,6 +316,52 @@ type HTTPResponse struct {
 	Results   []map[string]interface{} `json:"results,omitempty"`
 	Error     string                   `json:"error,omitempty"`
 	Timing    map[string]int64         `json:"timing,omitempty"`
+}
+
+func (g *Gateway) executeCreateTable(ctx context.Context, req *CreateTableHTTPRequest) *HTTPResponse {
+	start := time.Now()
+
+	// Would: register schema with meta service
+	resp := &HTTPResponse{
+		RequestID: req.RequestID,
+		Status:    "ok",
+		Timing: map[string]int64{
+			"total_ms": time.Since(start).Milliseconds(),
+		},
+	}
+
+	return resp
+}
+
+func (g *Gateway) executeAddEdge(ctx context.Context, req *GraphEdgeHTTPRequest) *HTTPResponse {
+	start := time.Now()
+
+	// Would: add edge to graph index
+	resp := &HTTPResponse{
+		RequestID: req.RequestID,
+		Status:    "ok",
+		Timing: map[string]int64{
+			"total_ms": time.Since(start).Milliseconds(),
+		},
+	}
+
+	return resp
+}
+
+func (g *Gateway) executeGraphTraverse(ctx context.Context, req *GraphTraverseHTTPRequest) *HTTPResponse {
+	start := time.Now()
+
+	// Would: traverse graph from start node
+	resp := &HTTPResponse{
+		RequestID: req.RequestID,
+		Status:    "ok",
+		Results:   []map[string]interface{}{},
+		Timing: map[string]int64{
+			"total_ms": time.Since(start).Milliseconds(),
+		},
+	}
+
+	return resp
 }
 
 func main() {
