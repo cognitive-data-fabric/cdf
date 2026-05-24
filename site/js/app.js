@@ -417,7 +417,34 @@ function initContactForm() {
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    showToast("✅ Message sent! We will get back to you soon.");
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+    const topic = document.getElementById("topic").value;
+    const message = document.getElementById("message").value;
+
+    const labels = {
+      general: "question",
+      bug: "bug",
+      feature: "enhancement",
+      contribute: "help wanted",
+      enterprise: "enterprise",
+    };
+
+    const title = encodeURIComponent(
+      `[${topic.toUpperCase()}] Feedback from ${name}`,
+    );
+    const body = encodeURIComponent(
+      `**Submitted via:** Cognitive Data Fabric website\n` +
+        `**Name:** ${name}\n` +
+        `**Email:** ${email}\n` +
+        `**Topic:** ${topic}\n` +
+        `**Message:**\n\n${message}\n\n---\n` +
+        `_This issue was auto-generated from the website contact form._`,
+    );
+    const label = labels[topic] || "question";
+
+    const url = `https://github.com/cognitive-data-fabric/cdf/issues/new?title=${title}&body=${body}&labels=${label}`;
+    window.open(url, "_blank");
     form.reset();
   });
 }
