@@ -344,20 +344,36 @@ POST /check-drift
 
 ## Deployment
 
-### Docker Compose (Development)
+### Docker Compose (Recommended)
+
+One command runs the full stack with demo data:
 
 ```bash
+git clone https://github.com/cognitive-data-fabric/cdf.git
+cd cdf
 docker-compose up -d
+```
 
-# Services started:
-# - 2x Storage Node (Rust)
-# - Router (Go)
-# - Gateway (Go)
-# - Meta (Go)
-# - Embed Service (Python)
-# - Drift Detector (Python)
-# - Redis
-# - MinIO
+**Services started:**
+
+- 2x Storage Node (Rust, sharded)
+- Router (Go)
+- Gateway (Go, HTTP API on port 8080)
+- Meta (Go)
+- Embed Service (Python, port 8001)
+- Drift Detector (Python, port 8002)
+- Redis
+- MinIO
+
+**Auto-seeded demo data:** 8 ML papers with embeddings + citation graph
+
+```bash
+curl http://localhost:8080/health
+# → {"status": "healthy", "version": "0.1.0"}
+
+curl -X POST http://localhost:8080/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{"table": "papers", "namespace": "demo", "vector": [...], "top_k": 3}'
 ```
 
 ### Kubernetes (Production)

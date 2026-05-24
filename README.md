@@ -95,6 +95,32 @@ python3.10 ai-services/embed-service/main.py      # Port 8001
 python3.10 ai-services/drift-detector/main.py     # Port 8002
 ```
 
+### 🚀 Quick Demo (Docker Compose)
+
+Run the full CDF stack with pre-loaded demo data in one command:
+
+```bash
+git clone https://github.com/cognitive-data-fabric/cdf.git
+cd cdf
+docker-compose up -d
+
+# Wait 60 seconds for services + demo data seeding
+curl http://localhost:8080/health
+# → {"status": "healthy", "version": "0.1.0"}
+
+# Try vector search on 8 ML papers (auto-seeded)
+curl -X POST http://localhost:8080/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{"table": "papers", "namespace": "demo", "vector": [0.1, 0.2, ...], "top_k": 3}'
+```
+
+**What starts:**
+
+- 2 storage nodes (sharded), query router, API gateway, meta service
+- Embed service with `all-MiniLM-L6-v2` model
+- Drift detector, Redis, MinIO
+- **Auto-seeded demo data**: 8 ML papers with real embeddings + citation graph
+
 ### Your First Query (Python SDK)
 
 ```python
