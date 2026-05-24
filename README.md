@@ -102,24 +102,154 @@ Run the full CDF stack with pre-loaded demo data in one command:
 ```bash
 git clone https://github.com/cognitive-data-fabric/cdf.git
 cd cdf
-docker-compose up -d
+docker-compose up -d --build
 
 # Wait 60 seconds for services + demo data seeding
 curl http://localhost:8080/health
 # → {"status": "healthy", "version": "0.1.0"}
-
-# Try vector search on 8 ML papers (auto-seeded)
-curl -X POST http://localhost:8080/v1/search \
-  -H "Content-Type: application/json" \
-  -d '{"table": "papers", "namespace": "demo", "vector": [0.1, 0.2, ...], "top_k": 3}'
 ```
 
 **What starts:**
 
-- 2 storage nodes (sharded), query router, API gateway, meta service
-- Embed service with `all-MiniLM-L6-v2` model
-- Drift detector, Redis, MinIO
+| Service        | Port     | Access                | Purpose                             |
+| -------------- | -------- | --------------------- | ----------------------------------- |
+| API Gateway    | **8080** | http://localhost:8080 | HTTP/gRPC entry point               |
+| Query Router   | 50050    | internal              | CQL parsing, shard routing          |
+| Meta Service   | 50054    | internal              | Schema registry, cluster membership |
+| Storage Node 1 | 50051    | internal              | Shard range: 0-32767                |
+| Storage Node 2 | 50052    | internal              | Shard range: 32768-65535            |
+| Embed Service  | 8001     | internal              | `all-MiniLM-L6-v2` model            |
+| Drift Detector | 8002     | internal              | Distribution shift detection        |
+| Redis          | 6379     | internal              | Cache, pub/sub                      |
+| MinIO Console  | **9001** | http://localhost:9001 | Blob/object store UI                |
+| MinIO S3 API   | 9000     | internal              | Programmatic object access          |
+
+**MinIO Login:** `minioadmin` / `minioadmin`
+
 - **Auto-seeded demo data**: 8 ML papers with real embeddings + citation graph
+
+### 🔧 Recent Fixes (May 2026)
+
+If you pulled earlier and had build failures, these are now fixed on `main`:
+
+| Issue                                                   | Fix                                                    |
+| ------------------------------------------------------- | ------------------------------------------------------ |
+| `go mod tidy` failed with invalid `raft-boltdb` version | Updated to valid version, committed `go.sum`           |
+| Go Dockerfiles used `go mod tidy` without `go.sum`      | Now copy `go.sum` and use `go mod download`            |
+| Rust `edition2024` not supported in `rust:1.75-alpine`  | Upgraded to `rust:1.86-alpine`                         |
+| Storage Dockerfile only copied 2 crates                 | Now copies full `crates/` workspace                    |
+| `cargo build` failed — missing `Result` type            | Added `pub type Result<T>` in `cdf-storage/src/lib.rs` |
+| `engine.rs` — use of moved value                        | Fixed by extracting `row_id` before move               |
+| `cdf-meta/main.go` — unused import                      | Removed `encoding/json`                                |
+| Gateway hardcoded `localhost:50050`                     | Now reads `CDF_ROUTER_ADDR` from env                   |
+| Missing `cdf-storage` binary target                     | Added `main.rs` + `[[bin]]` in `Cargo.toml`            |
+
+### 📡 API Usage Examples
+
+#### Health Check
+
+```bash
+curl http://localhost:8080/health
+# → {"status":"healthy"}
+```
+
+#### Insert a Document (Scalar + Text)
+
+```bash
+curl -X POST http://localhost:8080/v1/insert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "request_id": "1",
+    "table": "documents",
+    "data": {
+      "title": "Introduction to Vector Databases",
+      "content": "Vector databases store high-dimensional embeddings...",
+      "author": "Alice Smith",
+      "published_year": 2024
+    }
+  }'
+```
+
+#### Insert with Embedding (Vector Search)
+
+```bash
+curl -X POST http://localhost:8080/v1/insert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "request_id": "2",
+    "table": "papers",
+    "data": {
+      "title": "Attention Is All You Need",
+      "abstract": "We propose a new simple network architecture...",
+      "embedding": {
+        "model_id": "all-MiniLM-L6-v2",
+        "values": [0.1, 0.2, 0.3, ...]
+      }
+    }
+  }'
+```
+
+#### Vector Search
+
+```bash
+curl -X POST http://localhost:8080/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "request_id": "3",
+    "table": "papers",
+    "vector": [0.1, 0.2, 0.3, 0.4],
+    "top_k": 5,
+    "threshold": 0.85
+  }'
+```
+
+#### Insert with Graph Edge (Citation)
+
+```bash
+curl -X POST http://localhost:8080/v1/insert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "request_id": "4",
+    "table": "citations",
+    "data": {
+      "from_paper": "paper-123",
+      "to_paper": "paper-456",
+      "edge_type": "cites",
+      "weight": 1.0
+    }
+  }'
+```
+
+#### Query with CQL
+
+```bash
+curl -X POST http://localhost:8080/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "request_id": "5",
+    "cql": "SELECT title FROM papers WHERE embedding SIMILAR TO [0.1,0.2,0.3] WITH THRESHOLD 0.85"
+  }'
+```
+
+### 🗂 Storing Different Data Types
+
+CDF is **poly-modal** — one row can hold any combination of these value types:
+
+| Data Type                             | How to Store                                             | Use Case                                | Stored In             |
+| ------------------------------------- | -------------------------------------------------------- | --------------------------------------- | --------------------- |
+| **Scalar** (int, float, string, bool) | Direct JSON value                                        | IDs, names, counts, flags               | LSM-tree inline       |
+| **Text** (long documents)             | JSON string                                              | Articles, descriptions, logs            | LSM-tree inline       |
+| **Embedding** (vector)                | `{"model_id": "...", "values": [...]}`                   | Semantic search, similarity             | HNSW index + LSM-tree |
+| **Tensor** (multi-dimensional)        | `{"data": [...], "shape": [3, 224, 224]}`                | Image features, attention maps          | LSM-tree inline       |
+| **Distribution** (uncertainty)        | `{"mean": 0.8, "std_dev": 0.1}`                          | AI confidence, probabilistic values     | LSM-tree inline       |
+| **BlobRef** (large media)             | Content-hash string                                      | Images, videos, audio, PDFs             | MinIO (S3-compatible) |
+| **GraphEdge** (relationship)          | `{"from_id": "...", "to_id": "...", "edge_type": "..."}` | Citations, social networks, hierarchies | CSR graph index       |
+
+**BlobRef / MinIO workflow:**
+
+1. Upload file to MinIO (via S3 API or console at http://localhost:9001)
+2. Store the returned content hash in CDF as `BlobRef`
+3. CDF fetches from MinIO on demand by content hash
 
 ### Your First Query (Python SDK)
 
