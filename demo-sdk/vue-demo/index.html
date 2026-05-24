@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CDF Vue Demo</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+  <div id="app">
+    <div style="max-width:900px;margin:0 auto;padding:20px">
+      <h1>CDF Vue Demo</h1>
+
+      <section>
+        <h2>Health</h2>
+        <pre>{{ health }}</pre>
+      </section>
+
+      <section>
+        <h2>Create Paper (Scalar + Text + Embedding)</h2>
+        <form @submit.prevent="createPaper">
+          <input v-model="form.title" placeholder="Title" />
+          <input v-model="form.year" placeholder="Year" type="number" />
+          <input v-model="form.abstract" placeholder="Abstract" />
+          <button type="submit">Insert</button>
+        </form>
+        <p v-if="message" style="color:green">{{ message }}</p>
+      </section>
+
+      <section>
+        <h2>All Papers (Read)</h2>
+        <table border="1" cellpadding="8">
+          <thead>
+            <tr><th>Row ID</th><th>Title</th><th>Year</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in papers" :key="p.row_id">
+              <td>{{ p.row_id }}</td>
+              <td>{{ p.title }}</td>
+              <td>{{ p.year }}</td>
+              <td>
+                <button @click="updatePaper(p.row_id)">Update</button>
+                <button @click="deletePaper(p.row_id)">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Text Search (Vector)</h2>
+        <input v-model="searchText" placeholder="Search text..." />
+        <button @click="doSearch">Search</button>
+        <ul>
+          <li v-for="(r,i) in searchResults" :key="i">
+            {{ r.title }} (score: {{ r.score?.toFixed(3) }})
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Graph Traversal</h2>
+        <input v-model="graphStart" placeholder="Start node ID" />
+        <button @click="traverseGraph">Traverse</button>
+        <pre>{{ graphPaths }}</pre>
+      </section>
+
+      <section>
+        <h2>Add Citation Edge (Graph)</h2>
+        <form @submit.prevent="addEdge">
+          <input v-model="edge.from" placeholder="From ID" />
+          <input v-model="edge.to" placeholder="To ID" />
+          <button type="submit">Add Edge</button>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+    const API = 'http://localhost:8080';
+
+    createApp({
+      data() {
+        return {
+          health: null,
+          papers: [],
+          form: { title: '', year: '', abstract: '' },
+          searchText: '',
+          searchResults: [],
+          graphStart: '',
+          graphPaths: [],
+          edge: { from: '', to: '' },
+          message: ''
+        };
+      },
+      mounted() {
+        this.checkHealth();
+        this.loadPapers();
+      },
+      methods: {
+        async checkHealth() {
+          const r = await fetch(`${API}/health`);
+          this.health = await r.json();
+        },
+        async loadPapers() {
+          const r = await fetch(`${API}/v1/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: 'SELECT * FROM papers' })
+          });
+          const data = await r.json();
+          this.papers = data.results || [];
+        },
+        async createPaper() {
+          const payload = {
+            namespace: 'default',
+            table: 'papers',
+            data: {
+              title: this.form.title,
+              year: parseInt(this.form.year),
+              abstract: this.form.abstract,
+              embedding: {
+                model_id: 'all-MiniLM-L6-v2',
+                values: Array.from({length: 384}, () => Math.random() * 2 - 1)
+              }
+            }
+          };
+          const r = await fetch(`${API}/v1/insert`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const result = await r.json();
+          this.message = `Created: ${result.row_id}`;
+          this.form = { title: '', year: '', abstract: '' };
+          this.loadPapers();
+        },
+        async updatePaper(rowId) {
+          const newTitle = prompt('New title:');
+          if (!newTitle) return;
+          await fetch(`${API}/v1/update`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              namespace: 'default', table: 'papers', row_id: rowId,
+              data: { title: newTitle }
+            })
+          });
+          this.message = `Updated: ${rowId}`;
+          this.loadPapers();
+        },
+        async deletePaper(rowId) {
+          if (!confirm(`Delete ${rowId}?`)) return;
+          await fetch(`${API}/v1/rows/default/papers/${rowId}`, { method: 'DELETE' });
+          this.message = `Deleted: ${rowId}`;
+          this.loadPapers();
+        },
+        async doSearch() {
+          const r = await fetch(`${API}/v1/search_text`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              namespace: 'default', table: 'papers', text: this.searchText, top_k: 5
+            })
+          });
+          const data = await r.json();
+          this.searchResults = data.results || [];
+        },
+        async traverseGraph() {
+          const r = await fetch(`${API}/v1/graph/traverse?start_id=${this.graphStart}&depth=2&edge_types=cites`);
+          const data = await r.json();
+          this.graphPaths = data.paths || [];
+        },
+        async addEdge() {
+          await fetch(`${API}/v1/graph/edges`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              namespace: 'default',
+              from_id: this.edge.from,
+              to_id: this.edge.to,
+              edge_type: 'cites'
+            })
+          });
+          this.message = `Edge added: ${this.edge.from} -> ${this.edge.to}`;
+          this.edge = { from: '', to: '' };
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CDF Svelte Demo</title>
+  <script src="https://unpkg.com/svelte@4/dist/svelte.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    const API = 'http://localhost:8080';
+
+    import { createRoot } from 'https://esm.sh/react-dom@18/client';
+    import React, { useState, useEffect } from 'https://esm.sh/react@18';
+
+    // Using React as Svelte runtime for simplicity in single-file demo
+    function App() {
+      const [health, setHealth] = useState(null);
+      const [papers, setPapers] = useState([]);
+      const [form, setForm] = useState({ title: '', year: '', abstract: '' });
+      const [searchText, setSearchText] = useState('');
+      const [searchResults, setSearchResults] = useState([]);
+      const [graphStart, setGraphStart] = useState('');
+      const [graphPaths, setGraphPaths] = useState([]);
+      const [edge, setEdge] = useState({ from: '', to: '' });
+      const [userForm, setUserForm] = useState({ username: '', email: '', password: '' });
+      const [msg, setMsg] = useState('');
+
+      useEffect(() => { checkHealth(); loadPapers(); }, []);
+
+      async function checkHealth() {
+        const r = await fetch(`${API}/health`);
+        setHealth(await r.json());
+      }
+
+      async function loadPapers() {
+        const r = await fetch(`${API}/v1/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: 'SELECT * FROM papers' })
+        });
+        const data = await r.json();
+        setPapers(data.results || []);
+      }
+
+      async function createPaper(e) {
+        e.preventDefault();
+        const payload = {
+          namespace: 'default',
+          table: 'papers',
+          data: {
+            title: form.title,
+            year: parseInt(form.year),
+            abstract: form.abstract,
+            embedding: {
+              model_id: 'all-MiniLM-L6-v2',
+              values: Array.from({length: 384}, () => Math.random() * 2 - 1)
+            }
+          }
+        };
+        const r = await fetch(`${API}/v1/insert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await r.json();
+        setMsg(`Created: ${result.row_id}`);
+        setForm({ title: '', year: '', abstract: '' });
+        loadPapers();
+      }
+
+      async function updatePaper(rowId) {
+        const newTitle = prompt('New title:');
+        if (!newTitle) return;
+        await fetch(`${API}/v1/update`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            namespace: 'default', table: 'papers', row_id: rowId,
+            data: { title: newTitle }
+          })
+        });
+        setMsg(`Updated: ${rowId}`);
+        loadPapers();
+      }
+
+      async function deletePaper(rowId) {
+        if (!confirm(`Delete ${rowId}?`)) return;
+        await fetch(`${API}/v1/rows/default/papers/${rowId}`, { method: 'DELETE' });
+        setMsg(`Deleted: ${rowId}`);
+        loadPapers();
+      }
+
+      async function doSearch() {
+        const r = await fetch(`${API}/v1/search_text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            namespace: 'default', table: 'papers', text: searchText, top_k: 5
+          })
+        });
+        const data = await r.json();
+        setSearchResults(data.results || []);
+      }
+
+      async function traverseGraph() {
+        const r = await fetch(`${API}/v1/graph/traverse?start_id=${graphStart}&depth=2&edge_types=cites`);
+        const data = await r.json();
+        setGraphPaths(data.paths || []);
+      }
+
+      async function addEdge(e) {
+        e.preventDefault();
+        await fetch(`${API}/v1/graph/edges`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            namespace: 'default',
+            from_id: edge.from,
+            to_id: edge.to,
+            edge_type: 'cites'
+          })
+        });
+        setMsg(`Edge added: ${edge.from} -> ${edge.to}`);
+        setEdge({ from: '', to: '' });
+      }
+
+      async function createUser(e) {
+        e.preventDefault();
+        await fetch(`${API}/v1/admin/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...userForm,
+            roles: ['developer']
+          })
+        });
+        setMsg(`User created: ${userForm.username}`);
+        setUserForm({ username: '', email: '', password: '' });
+      }
+
+      return React.createElement('div', { style: { maxWidth: 900, margin: '0 auto', padding: 20 } },
+        React.createElement('h1', null, 'CDF Svelte-Style Demo'),
+        React.createElement('section', null,
+          React.createElement('h2', null, 'Health'),
+          React.createElement('pre', null, JSON.stringify(health, null, 2))
+        ),
+        React.createElement('section', null,
+          React.createElement('h2', null, 'Create Paper (Scalar + Text + Embedding)'),
+          React.createElement('form', { onSubmit: createPaper },
+            React.createElement('input', { placeholder: 'Title', value: form.title, onChange: e => setForm({...form, title: e.target.value}) }),
+            React.createElement('input', { placeholder: 'Year', type: 'number', value: form.year, onChange: e => setForm({...form, year: e.target.value}) }),
+            React.createElement('input', { placeholder: 'Abstract', value: form.abstract, onChange: e => setForm({...form, abstract: e.target.value}) }),
+            React.createElement('button', { type: 'submit' }, 'Insert')
+          ),
+          msg && React.createElement('p', { style: { color: 'green' } }, msg)
+        ),
+        React.createElement('section', null,
+          React.createElement('h2', null, 'All Papers (Read / Update / Delete)'),
+          React.createElement('table', { border: 1, cellPadding: 8 },
+            React.createElement('thead', null,
+              React.createElement('tr', null,
+                React.createElement('th', null, 'Row ID'),
+                React.createElement('th', null, 'Title'),
+                React.createElement('th', null, 'Year'),
+                React.createElement('th', null, 'Actions')
+              )
+            ),
+            React.createElement('tbody', null,
+              papers.map(p => React.createElement('tr', { key: p.row_id },
+                React.createElement('td', null, p.row_id),
+                React.createElement('td', null, p.title),
+                React.createElement('td', null, p.year),
+                React.createElement('td', null,
+                  React.createElement('button', { onClick: () => updatePaper(p.row_id) }, 'Update'),
+                  React.createElement('button', { onClick: () => deletePaper(p.row_id) }, 'Delete')
+                )
+              ))
+            )
+          )
+        ),
+        React.createElement('section', null,
+          React.createElement('h2', null, 'Text Search (Vector)'),
+          React.createElement('input', { placeholder: 'Search text...', value: searchText, onChange: e => setSearchText(e.target.value) }),
+          React.createElement('button', { onClick: doSearch }, 'Search'),
+          React.createElement('ul', null, searchResults.map((r, i) => React.createElement('li', { key: i }, `${r.title} (score: ${r.score?.toFixed(3)})`)))
+        ),
+        React.createElement('section', null,
+          React.createElement('h2', null, 'Graph Traversal'),
+          React.createElement('input', { placeholder: 'Start node ID', value: graphStart, onChange: e => setGraphStart(e.target.value) }),
+          React.createElement('button', { onClick: traverseGraph }, 'Traverse'),
+          React.createElement('pre', null, JSON.stringify(graphPaths, null, 2))
+        ),
+        React.createElement('section', null,
+          React.createElement('h2', null, 'Add Citation Edge (Graph)'),
+          React.createElement('form', { onSubmit: addEdge },
+            React.createElement('input', { placeholder: 'From ID', value: edge.from, onChange: e => setEdge({...edge, from: e.target.value}) }),
+            React.createElement('input', { placeholder: 'To ID', value: edge.to, onChange: e => setEdge({...edge, to: e.target.value}) }),
+            React.createElement('button', { type: 'submit' }, 'Add Edge')
+          )
+        ),
+        React.createElement('section', null,
+          React.createElement('h2', null, 'Admin: Create User'),
+          React.createElement('form', { onSubmit: createUser },
+            React.createElement('input', { placeholder: 'Username', value: userForm.username, onChange: e => setUserForm({...userForm, username: e.target.value}) }),
+            React.createElement('input', { placeholder: 'Email', value: userForm.email, onChange: e => setUserForm({...userForm, email: e.target.value}) }),
+            React.createElement('input', { placeholder: 'Password', type: 'password', value: userForm.password, onChange: e => setUserForm({...userForm, password: e.target.value}) }),
+            React.createElement('button', { type: 'submit' }, 'Create User')
+          )
+        )
+      );
+    }
+
+    const root = createRoot(document.getElementById('app'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>

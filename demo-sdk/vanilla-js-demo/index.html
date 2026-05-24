@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CDF Vanilla JS Demo</title>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; }
+    section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+    input, button { margin: 5px; padding: 8px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    .msg { color: green; }
+  </style>
+</head>
+<body>
+  <h1>CDF Vanilla JS Demo</h1>
+
+  <section>
+    <h2>Health</h2>
+    <pre id="health">Loading...</pre>
+  </section>
+
+  <section>
+    <h2>Create Paper (Scalar + Text + Embedding)</h2>
+    <form id="createForm">
+      <input id="title" placeholder="Title" required />
+      <input id="year" placeholder="Year" type="number" required />
+      <input id="abstract" placeholder="Abstract" required />
+      <button type="submit">Insert</button>
+    </form>
+    <p id="msg" class="msg"></p>
+  </section>
+
+  <section>
+    <h2>All Papers (Read / Update / Delete)</h2>
+    <table>
+      <thead>
+        <tr><th>Row ID</th><th>Title</th><th>Year</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="papersTable"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Text Search (Vector)</h2>
+    <input id="searchText" placeholder="Search text..." />
+    <button onclick="doSearch()">Search</button>
+    <ul id="searchResults"></ul>
+  </section>
+
+  <section>
+    <h2>Graph Traversal</h2>
+    <input id="graphStart" placeholder="Start node ID" />
+    <button onclick="traverseGraph()">Traverse</button>
+    <pre id="graphPaths"></pre>
+  </section>
+
+  <section>
+    <h2>Add Citation Edge (Graph)</h2>
+    <form id="edgeForm">
+      <input id="fromId" placeholder="From ID" required />
+      <input id="toId" placeholder="To ID" required />
+      <button type="submit">Add Edge</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Admin: Create User</h2>
+    <form id="userForm">
+      <input id="uName" placeholder="Username" required />
+      <input id="uEmail" placeholder="Email" required />
+      <input id="uPass" placeholder="Password" type="password" required />
+      <button type="submit">Create User</button>
+    </form>
+  </section>
+
+  <script>
+    const API = 'http://localhost:8080';
+
+    async function checkHealth() {
+      const r = await fetch(`${API}/health`);
+      document.getElementById('health').textContent = JSON.stringify(await r.json(), null, 2);
+    }
+
+    async function loadPapers() {
+      const r = await fetch(`${API}/v1/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'SELECT * FROM papers' })
+      });
+      const data = await r.json();
+      const rows = data.results || [];
+      const tbody = document.getElementById('papersTable');
+      tbody.innerHTML = rows.map(p => `
+        <tr>
+          <td>${p.row_id}</td>
+          <td>${p.title}</td>
+          <td>${p.year}</td>
+          <td>
+            <button onclick="updatePaper('${p.row_id}')">Update</button>
+            <button onclick="deletePaper('${p.row_id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('createForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        namespace: 'default',
+        table: 'papers',
+        data: {
+          title: document.getElementById('title').value,
+          year: parseInt(document.getElementById('year').value),
+          abstract: document.getElementById('abstract').value,
+          embedding: {
+            model_id: 'all-MiniLM-L6-v2',
+            values: Array.from({length: 384}, () => Math.random() * 2 - 1)
+          }
+        }
+      };
+      const r = await fetch(`${API}/v1/insert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await r.json();
+      document.getElementById('msg').textContent = `Created: ${result.row_id}`;
+      e.target.reset();
+      loadPapers();
+    });
+
+    async function updatePaper(rowId) {
+      const newTitle = prompt('New title:');
+      if (!newTitle) return;
+      await fetch(`${API}/v1/update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          namespace: 'default', table: 'papers', row_id: rowId,
+          data: { title: newTitle }
+        })
+      });
+      document.getElementById('msg').textContent = `Updated: ${rowId}`;
+      loadPapers();
+    }
+
+    async function deletePaper(rowId) {
+      if (!confirm(`Delete ${rowId}?`)) return;
+      await fetch(`${API}/v1/rows/default/papers/${rowId}`, { method: 'DELETE' });
+      document.getElementById('msg').textContent = `Deleted: ${rowId}`;
+      loadPapers();
+    }
+
+    async function doSearch() {
+      const text = document.getElementById('searchText').value;
+      const r = await fetch(`${API}/v1/search_text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          namespace: 'default', table: 'papers', text, top_k: 5
+        })
+      });
+      const data = await r.json();
+      const results = data.results || [];
+      document.getElementById('searchResults').innerHTML = results.map(r =>
+        `<li>${r.title} (score: ${r.score?.toFixed(3)})</li>`
+      ).join('');
+    }
+
+    async function traverseGraph() {
+      const start = document.getElementById('graphStart').value;
+      const r = await fetch(`${API}/v1/graph/traverse?start_id=${start}&depth=2&edge_types=cites`);
+      const data = await r.json();
+      document.getElementById('graphPaths').textContent = JSON.stringify(data.paths || [], null, 2);
+    }
+
+    document.getElementById('edgeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await fetch(`${API}/v1/graph/edges`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          namespace: 'default',
+          from_id: document.getElementById('fromId').value,
+          to_id: document.getElementById('toId').value,
+          edge_type: 'cites'
+        })
+      });
+      document.getElementById('msg').textContent = 'Edge added';
+      e.target.reset();
+    });
+
+    document.getElementById('userForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await fetch(`${API}/v1/admin/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('uName').value,
+          email: document.getElementById('uEmail').value,
+          password: document.getElementById('uPass').value,
+          roles: ['developer']
+        })
+      });
+      document.getElementById('msg').textContent = 'User created';
+      e.target.reset();
+    });
+
+    checkHealth();
+    loadPapers();
+  </script>
+</body>
+</html>
