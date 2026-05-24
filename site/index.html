@@ -60,7 +60,7 @@
                     <span class="stat-label">Databases<br>Replaced</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-num"><10<span class="stat-unit">ms</span></span>
+                    <span class="stat-num">&lt;10<span class="stat-unit">ms</span></span>
                     <span class="stat-label">Vector Search<br>p99 Latency</span>
                 </div>
                 <div class="stat">
@@ -84,7 +84,7 @@
                 <div class="deploy-command">
                     <span class="deploy-prompt">$</span>
                     <code>docker-compose up -d</code>
-                    <span class="deploy-copy" onclick="navigator.clipboard.writeText('docker-compose up -d');showToast('Copied!')">📋</span>
+                    <span class="deploy-copy" id="deployCopyBtn">📋</span>
                 </div>
                 <p class="deploy-desc">Get the full stack + 8 ML papers with embeddings + citation graph in 60 seconds</p>
             </div>
@@ -343,14 +343,14 @@ paths = client.traverse(<span class="token-string">"paper-001"</span>, edge_type
         <div class="contact-grid">
             <div class="contact-channels" style="grid-column: 1 / -1; max-width: 900px; margin: 0 auto; width: 100%;">
                 <div class="channel-list" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); display: grid; gap: 20px;">
-                    <a href="https://github.com/cognitive-data-fabric/cdf/issues/new?labels=question&title=[Question]%20" class="channel" target="_blank" id="issueCard">
+                    <a href="https://github.com/cognitive-data-fabric/cdf/issues/new?labels=question&title=[Question]%20" class="channel" target="_blank">
                         <div class="channel-icon">🐛</div>
                         <div class="channel-info">
                             <h4>Report an Issue</h4>
                             <p>Found a bug? Request a feature? Open a GitHub Issue.</p>
                         </div>
                     </a>
-                    <a href="https://github.com/cognitive-data-fabric/cdf/discussions/new?category=general" class="channel" target="_blank" id="discussionCard">
+                    <a href="https://github.com/cognitive-data-fabric/cdf/discussions/new?category=general" class="channel" target="_blank">
                         <div class="channel-icon">💬</div>
                         <div class="channel-info">
                             <h4>Start a Discussion</h4>
@@ -372,8 +372,6 @@ paths = client.traverse(<span class="token-string">"paper-001"</span>, edge_type
                         </div>
                     </a>
                 </div>
-
-
             </div>
         </div>
     </section>
@@ -411,7 +409,7 @@ paths = client.traverse(<span class="token-string">"paper-001"</span>, edge_type
             </div>
         </div>
         <div class="footer-bottom">
-            <p>© 2024 Cognitive Data Fabric Team. Dual-licensed under <a href="https://github.com/cognitive-data-fabric/cdf/blob/main/LICENSE-MIT" target="_blank">MIT</a> OR <a href="https://github.com/cognitive-data-fabric/cdf/blob/main/LICENSE-APACHE" target="_blank">Apache-2.0</a>.</p>
+            <p>© 2026 Cognitive Data Fabric Team. Dual-licensed under <a href="https://github.com/cognitive-data-fabric/cdf/blob/main/LICENSE-MIT" target="_blank">MIT</a> OR <a href="https://github.com/cognitive-data-fabric/cdf/blob/main/LICENSE-APACHE" target="_blank">Apache-2.0</a>.</p>
         </div>
     </footer>
 

@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initNavigation();
   initSearch();
   initDemo();
-  initContactForm();
+  initCopyButton();
   initScrollAnimations();
 });
 
@@ -409,31 +409,21 @@ function initDemo() {
 }
 
 // ============================================
-// Contact Form
+// Copy Button
 // ============================================
-function initContactForm() {
-  // Inline discussion starter for GitHub Discussions
-  const discBtn = document.getElementById("discBtn");
-  if (discBtn) {
-    discBtn.addEventListener("click", () => {
-      const title = document.getElementById("discTitle").value.trim();
-      const body = document.getElementById("discBody").value.trim();
-
-      if (!title || !body) {
-        showToast("Please fill in both title and message.");
-        return;
-      }
-
-      const encTitle = encodeURIComponent(title);
-      const encBody = encodeURIComponent(
-        `${body}\n\n---\n_Posted via [Cognitive Data Fabric](https://cognitive-data-fabric.github.io/) website._`,
-      );
-      const url = `https://github.com/cognitive-data-fabric/cdf/discussions/new?category=general&title=${encTitle}&body=${encBody}`;
-      window.open(url, "_blank");
-
-      document.getElementById("discTitle").value = "";
-      document.getElementById("discBody").value = "";
-      showToast("Opening GitHub Discussions...");
+function initCopyButton() {
+  const deployCopyBtn = document.getElementById("deployCopyBtn");
+  if (deployCopyBtn) {
+    deployCopyBtn.style.cursor = "pointer";
+    deployCopyBtn.addEventListener("click", () => {
+      navigator.clipboard
+        .writeText("docker-compose up -d")
+        .then(() => {
+          showToast("Copied!");
+        })
+        .catch(() => {
+          showToast("Copy failed");
+        });
     });
   }
 }
