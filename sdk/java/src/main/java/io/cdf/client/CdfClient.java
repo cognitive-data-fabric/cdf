@@ -46,42 +46,61 @@ public class CdfClient implements AutoCloseable {
                     .orElse("");
         }
 
-        ClassicHttpRequest req;
-        switch (method.toUpperCase()) {
-            case "POST" -> {
-                HttpPost post = new HttpPost(url);
-                if (body != null)
-                    post.setEntity(new StringEntity(body.toString(), ContentType.APPLICATION_JSON));
-                req = post;
-            }
-            case "PUT" -> {
-                HttpPut put = new HttpPut(url);
-                if (body != null)
-                    put.setEntity(new StringEntity(body.toString(), ContentType.APPLICATION_JSON));
-                req = put;
-            }
-            case "DELETE" -> req = new HttpDelete(url);
-            default -> req = new HttpGet(url);
-        }
-
-        req.setHeader("Content-Type", "application/json");
-        for (Map.Entry<String, String> h : auth.getHeaders().entrySet()) {
-            req.setHeader(h.getKey(), h.getValue());
-        }
-
         IOException lastError = null;
         for (int i = 0; i < retries; i++) {
-            try (CloseableHttpResponse resp = http.execute(req)) {
-                String respBody = EntityUtils.toString(resp.getEntity());
-                if (resp.getCode() >= 400) {
-                    throw new IOException("HTTP " + resp.getCode() + ": " + respBody);
+            try {
+                CloseableHttpResponse resp;
+                switch (method.toUpperCase()) {
+                    case "POST" -> {
+                        HttpPost post = new HttpPost(url);
+                        if (body != null)
+                            post.setEntity(new StringEntity(body.toString(), ContentType.APPLICATION_JSON));
+                        setHeaders(post);
+                        resp = http.execute(post);
+                    }
+                    case "PUT" -> {
+                        HttpPut put = new HttpPut(url);
+                        if (body != null)
+                            put.setEntity(new StringEntity(body.toString(), ContentType.APPLICATION_JSON));
+                        setHeaders(put);
+                        resp = http.execute(put);
+                    }
+                    case "DELETE" -> {
+                        HttpDelete del = new HttpDelete(url);
+                        setHeaders(del);
+                        resp = http.execute(del);
+                    }
+                    default -> {
+                        HttpGet get = new HttpGet(url);
+                        setHeaders(get);
+                        resp = http.execute(get);
+                    }
                 }
-                return mapper.readTree(respBody);
+
+                try (resp) {
+                    String respBody;
+                    try {
+                        respBody = EntityUtils.toString(resp.getEntity());
+                    } catch (Exception e) {
+                        throw new IOException("Failed to read response body", e);
+                    }
+                    if (resp.getCode() >= 400) {
+                        throw new IOException("HTTP " + resp.getCode() + ": " + respBody);
+                    }
+                    return mapper.readTree(respBody);
+                }
             } catch (IOException e) {
                 lastError = e;
             }
         }
         throw lastError != null ? lastError : new IOException("Max retries exceeded");
+    }
+
+    private void setHeaders(org.apache.hc.core5.http.HttpRequest req) {
+        req.setHeader("Content-Type", "application/json");
+        for (Map.Entry<String, String> h : auth.getHeaders().entrySet()) {
+            req.setHeader(h.getKey(), h.getValue());
+        }
     }
 
     private JsonNode request(String method, String path, JsonNode body) throws IOException {
