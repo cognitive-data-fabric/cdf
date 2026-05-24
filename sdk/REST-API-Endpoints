@@ -1,0 +1,376 @@
+# CDF REST API Endpoints Reference
+
+Base URL: `http://localhost:8080`
+
+---
+
+## Health
+
+| Method | Endpoint  | Auth | Description          |
+| ------ | --------- | ---- | -------------------- |
+| `GET`  | `/health` | None | Cluster health check |
+
+**Response:**
+
+```json
+{ "status": "healthy", "version": "0.1.0" }
+```
+
+---
+
+## Authentication
+
+| Method | Endpoint           | Auth    | Description                  |
+| ------ | ------------------ | ------- | ---------------------------- |
+| `POST` | `/v1/auth/token`   | None    | Login with username/password |
+| `POST` | `/v1/auth/refresh` | None    | Refresh access token         |
+| `POST` | `/v1/auth/revoke`  | API Key | Revoke a specific token      |
+
+**Login Request:**
+
+```json
+{
+  "username": "alice",
+  "password": "secret"
+}
+```
+
+**Login Response:**
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2g...",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}
+```
+
+---
+
+## Data Operations
+
+### Insert
+
+| Method | Endpoint           | Auth          | Description          |
+| ------ | ------------------ | ------------- | -------------------- |
+| `POST` | `/v1/insert`       | API Key / JWT | Insert a single row  |
+| `POST` | `/v1/batch_insert` | API Key / JWT | Insert multiple rows |
+
+**Insert Request:**
+
+```json
+{
+  "namespace": "default",
+  "table": "papers",
+  "data": {
+    "title": "Attention Is All You Need",
+    "abstract": "We propose a new simple network architecture...",
+    "embedding": {
+      "model_id": "all-MiniLM-L6-v2",
+      "values": [0.1, 0.2, 0.3, ...]
+    },
+    "year": 2017
+  }
+}
+```
+
+**Insert Response:**
+
+```json
+{
+  "row_id": "paper-123",
+  "status": "inserted"
+}
+```
+
+### Get / Update / Delete
+
+| Method   | Endpoint                                | Auth          | Description   |
+| -------- | --------------------------------------- | ------------- | ------------- |
+| `GET`    | `/v1/rows/{namespace}/{table}/{row_id}` | API Key / JWT | Get row by ID |
+| `PUT`    | `/v1/update`                            | API Key / JWT | Update a row  |
+| `DELETE` | `/v1/rows/{namespace}/{table}/{row_id}` | API Key / JWT | Delete a row  |
+
+**Update Request:**
+
+```json
+{
+  "namespace": "default",
+  "table": "papers",
+  "row_id": "paper-123",
+  "data": {
+    "title": "Updated Title"
+  }
+}
+```
+
+---
+
+## Query
+
+| Method | Endpoint    | Auth          | Description       |
+| ------ | ----------- | ------------- | ----------------- |
+| `POST` | `/v1/query` | API Key / JWT | Execute CQL query |
+
+**Request:**
+
+```json
+{
+  "query": "SELECT title FROM papers WHERE embedding SIMILAR TO :vec WITH THRESHOLD 0.85",
+  "params": {
+    "vec": [0.1, 0.2, 0.3]
+  }
+}
+```
+
+---
+
+## Vector Search
+
+| Method | Endpoint          | Auth          | Description              |
+| ------ | ----------------- | ------------- | ------------------------ |
+| `POST` | `/v1/search`      | API Key / JWT | Semantic vector search   |
+| `POST` | `/v1/search_text` | API Key / JWT | Text-to-embedding search |
+
+**Vector Search Request:**
+
+```json
+{
+  "namespace": "default",
+  "table": "papers",
+  "vector": [0.1, 0.2, 0.3, 0.4],
+  "top_k": 5,
+  "threshold": 0.85,
+  "filter": {
+    "year": { "$gt": 2020 }
+  }
+}
+```
+
+**Vector Search Response:**
+
+```json
+{
+  "results": [
+    {
+      "row_id": "paper-456",
+      "title": "BERT: Pre-training...",
+      "score": 0.92
+    }
+  ]
+}
+```
+
+**Text Search Request:**
+
+```json
+{
+  "namespace": "default",
+  "table": "papers",
+  "text": "transformer architecture",
+  "top_k": 5
+}
+```
+
+---
+
+## Graph Operations
+
+| Method | Endpoint              | Auth          | Description             |
+| ------ | --------------------- | ------------- | ----------------------- |
+| `POST` | `/v1/graph/edges`     | API Key / JWT | Add a graph edge        |
+| `GET`  | `/v1/graph/traverse`  | API Key / JWT | BFS graph traversal     |
+| `GET`  | `/v1/graph/neighbors` | API Key / JWT | Get immediate neighbors |
+
+**Add Edge Request:**
+
+```json
+{
+  "namespace": "default",
+  "from_id": "paper-123",
+  "to_id": "paper-456",
+  "edge_type": "cites",
+  "properties": {
+    "weight": 1.0,
+    "context": "related work"
+  }
+}
+```
+
+**Traverse Request:**
+
+```http
+GET /v1/graph/traverse?start_id=paper-123&depth=2&edge_types=cites,references
+```
+
+**Traverse Response:**
+
+```json
+{
+  "paths": [
+    {
+      "nodes": ["paper-123", "paper-456", "paper-789"],
+      "edges": [
+        { "from": "paper-123", "to": "paper-456", "type": "cites" },
+        { "from": "paper-456", "to": "paper-789", "type": "cites" }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Streaming (SSE)
+
+| Method | Endpoint        | Auth          | Description               |
+| ------ | --------------- | ------------- | ------------------------- |
+| `GET`  | `/v1/subscribe` | API Key / JWT | Server-Sent Events stream |
+
+**Request:**
+
+```http
+GET /v1/subscribe?namespace=default&table=papers&events=insert,update
+```
+
+**Event Stream:**
+
+```text
+event: insert
+data: {"row_id": "paper-999", "table": "papers"}
+
+event: update
+data: {"row_id": "paper-123", "changes": {"title": "New Title"}}
+```
+
+---
+
+## Admin APIs
+
+### Users
+
+| Method   | Endpoint                                   | Auth               | Description      |
+| -------- | ------------------------------------------ | ------------------ | ---------------- |
+| `POST`   | `/v1/admin/users`                          | SuperAdmin / Admin | Create user      |
+| `GET`    | `/v1/admin/users`                          | Admin              | List users       |
+| `GET`    | `/v1/admin/users/{user_id}`                | Admin              | Get user details |
+| `PUT`    | `/v1/admin/users/{user_id}`                | Admin              | Update user      |
+| `DELETE` | `/v1/admin/users/{user_id}`                | Admin              | Delete user      |
+| `POST`   | `/v1/admin/users/{user_id}/reset_password` | Admin              | Reset password   |
+
+**Create User Request:**
+
+```json
+{
+  "username": "alice",
+  "email": "alice@example.com",
+  "password": "secret",
+  "roles": ["developer"],
+  "namespaces": ["default", "ml"]
+}
+```
+
+### API Keys
+
+| Method   | Endpoint                     | Auth  | Description    |
+| -------- | ---------------------------- | ----- | -------------- |
+| `POST`   | `/v1/admin/apikeys`          | Admin | Create API key |
+| `GET`    | `/v1/admin/apikeys`          | Admin | List API keys  |
+| `DELETE` | `/v1/admin/apikeys/{key_id}` | Admin | Revoke API key |
+
+### ACL
+
+| Method   | Endpoint        | Auth  | Description      |
+| -------- | --------------- | ----- | ---------------- |
+| `POST`   | `/v1/admin/acl` | Admin | Grant ACL        |
+| `DELETE` | `/v1/admin/acl` | Admin | Revoke ACL       |
+| `GET`    | `/v1/admin/acl` | Admin | List ACL entries |
+
+**Grant ACL Request:**
+
+```json
+{
+  "principal_id": "alice-id",
+  "resource_type": "table",
+  "resource_id": "papers",
+  "actions": ["read", "write"],
+  "namespace": "default",
+  "expires_at": "2026-12-31T23:59:59Z",
+  "conditions": {
+    "ip_range": "192.168.1.0/24"
+  }
+}
+```
+
+### Namespaces
+
+| Method   | Endpoint                      | Auth  | Description      |
+| -------- | ----------------------------- | ----- | ---------------- |
+| `POST`   | `/v1/admin/namespaces`        | Admin | Create namespace |
+| `GET`    | `/v1/admin/namespaces`        | Admin | List namespaces  |
+| `GET`    | `/v1/admin/namespaces/{name}` | Admin | Get namespace    |
+| `PUT`    | `/v1/admin/namespaces/{name}` | Admin | Update namespace |
+| `DELETE` | `/v1/admin/namespaces/{name}` | Admin | Delete namespace |
+
+### Cluster
+
+| Method | Endpoint                                     | Auth  | Description      |
+| ------ | -------------------------------------------- | ----- | ---------------- |
+| `GET`  | `/v1/admin/cluster/status`                   | Admin | Cluster health   |
+| `GET`  | `/v1/admin/cluster/nodes`                    | Admin | List nodes       |
+| `POST` | `/v1/admin/cluster/nodes/{node_id}/drain`    | Admin | Drain node       |
+| `POST` | `/v1/admin/cluster/nodes/{node_id}/activate` | Admin | Activate node    |
+| `POST` | `/v1/admin/cluster/rebalance`                | Admin | Rebalance shards |
+
+### Backups
+
+| Method   | Endpoint                        | Auth  | Description    |
+| -------- | ------------------------------- | ----- | -------------- |
+| `POST`   | `/v1/admin/backups`             | Admin | Create backup  |
+| `GET`    | `/v1/admin/backups`             | Admin | List backups   |
+| `POST`   | `/v1/admin/backups/restore`     | Admin | Restore backup |
+| `DELETE` | `/v1/admin/backups/{backup_id}` | Admin | Delete backup  |
+
+### Audit Logs
+
+| Method | Endpoint          | Auth  | Description      |
+| ------ | ----------------- | ----- | ---------------- |
+| `GET`  | `/v1/admin/audit` | Admin | Query audit logs |
+
+**Query Params:**
+
+```http
+GET /v1/admin/audit?principal_id=alice-id&action=insert&resource=papers&limit=100
+```
+
+### Schema Registry
+
+| Method | Endpoint                               | Auth  | Description     |
+| ------ | -------------------------------------- | ----- | --------------- |
+| `POST` | `/v1/admin/schemas`                    | Admin | Register schema |
+| `GET`  | `/v1/admin/schemas`                    | Admin | List schemas    |
+| `GET`  | `/v1/admin/schemas/{namespace}/{name}` | Admin | Get schema      |
+| `POST` | `/v1/admin/schemas/evolve`             | Admin | Evolve schema   |
+
+---
+
+## Error Responses
+
+| Status | Meaning          | Example Response                                            |
+| ------ | ---------------- | ----------------------------------------------------------- |
+| `400`  | Bad Request      | `{"error": "Invalid vector dimensions"}`                    |
+| `401`  | Unauthorized     | `{"error": "Invalid or expired token"}`                     |
+| `403`  | Forbidden        | `{"error": "Insufficient permissions for table 'papers'"}`  |
+| `404`  | Not Found        | `{"error": "Row 'paper-123' not found"}`                    |
+| `422`  | Validation Error | `{"error": "Schema mismatch: expected vector, got scalar"}` |
+| `500`  | Internal Error   | `{"error": "Storage node unreachable"}`                     |
+
+---
+
+## Authentication Headers
+
+| Method  | Header          | Example                                         |
+| ------- | --------------- | ----------------------------------------------- |
+| API Key | `X-API-Key`     | `X-API-Key: dev-key-abc123`                     |
+| JWT     | `Authorization` | `Authorization: Bearer eyJhbGciOiJIUzI1NiIs...` |
