@@ -6,6 +6,7 @@ pub mod schema;
 pub mod temporal;
 pub mod prob;
 pub mod vector;
+pub mod data;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;

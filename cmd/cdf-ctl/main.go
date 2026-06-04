@@ -147,10 +147,26 @@ var clusterStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show cluster status",
 	Run: func(cmd *cobra.Command, args []string) {
+		// Query the gateway for live cluster status. Falls back to a clear
+		// "unknown" message if the gateway is unreachable so operators don't
+		// get a misleading "all healthy" reading from hardcoded values.
+		resp, err := http.Get(gatewayAddr + "/v1/admin/cluster/status")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: cannot reach gateway at %s: %v\n", gatewayAddr, err)
+			fmt.Println("Cluster Status: <unreachable>")
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			fmt.Fprintf(os.Stderr, "Gateway returned status %d\n", resp.StatusCode)
+			fmt.Println("Cluster Status: <error>")
+			return
+		}
+
+		body, _ := io.ReadAll(resp.Body)
 		fmt.Println("Cluster Status:")
-		fmt.Println("  Nodes: 3")
-		fmt.Println("  Shards: 6")
-		fmt.Println("  Status: healthy")
+		fmt.Println(string(body))
 	},
 }
 

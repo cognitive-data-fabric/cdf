@@ -2,6 +2,9 @@
 
 use cdf_common::ProbabilisticValue;
 
+/// Re-export Result type using cdf-common's error
+pub type Result<T> = std::result::Result<T, cdf_common::CdfError>;
+
 /// Arithmetic on probabilistic values with error propagation.
 pub struct ProbArithmetic;
 
@@ -29,10 +32,16 @@ impl ProbArithmetic {
         let v1 = a.variance().unwrap_or(0.0);
         let v2 = b.variance().unwrap_or(0.0);
 
-        // Var(XY) ≈ E[X]^2 Var(Y) + E[Y]^2 Var(X) for independent
+        // Var(XY) ≈ E[X]^2 Var(Y) + E[Y]^2 Var(X) for independent distributions.
+        // This is a second-order Taylor approximation that is exact for Normal variables
+        // and a reasonable estimate otherwise.
+        let mean = e1 * e2;
+        let var = e1 * e1 * v2 + e2 * e2 * v1;
+        // Guard against negative variance from numerical error
+        let var = if var < 0.0 { 0.0 } else { var };
         ProbabilisticValue::Normal {
-            mean: e1 * e2,
-            std_dev: (e1 * e1 * v2 + e2 * e2 * v1).sqrt(),
+            mean,
+            std_dev: var.sqrt(),
         }
     }
 

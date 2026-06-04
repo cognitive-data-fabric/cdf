@@ -143,7 +143,9 @@ impl PolicyEngine {
                 return decision;
             }
         }
-        true // Default allow if no rules match (fail-safe: should be deny in production)
+        // Default deny: any action not explicitly permitted by a policy rule is rejected.
+        // Production systems should always run with at least one allow rule installed.
+        false
     }
 }
 

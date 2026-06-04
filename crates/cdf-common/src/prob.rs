@@ -29,7 +29,25 @@ impl ProbabilisticValue {
             ProbabilisticValue::Normal { mean, .. } => *mean,
             ProbabilisticValue::ConfidenceInterval { lower, upper, .. } => (lower + upper) / 2.0,
             ProbabilisticValue::Discrete { values } => {
-                values.iter().map(|(_, p)| p).sum::<f64>() / values.len() as f64
+                if values.is_empty() {
+                    0.0
+                } else {
+                    // Proper weighted expectation: E[X] = sum(value * probability) for a
+                    // discrete distribution where the second tuple element is the probability mass.
+                    let total_p: f64 = values.iter().map(|(_, p)| p).sum();
+                    if total_p == 0.0 {
+                        // Fall back to simple mean if probabilities don't sum to anything useful
+                        values.iter().map(|(v, _)| v.parse::<f64>().unwrap_or(0.0)).sum::<f64>()
+                            / values.len() as f64
+                    } else {
+                        // Parse value string to f64 and weight by probability
+                        values
+                            .iter()
+                            .map(|(v, p)| v.parse::<f64>().unwrap_or(0.0) * p)
+                            .sum::<f64>()
+                            / total_p
+                    }
+                }
             }
             ProbabilisticValue::Beta { alpha, beta } => alpha / (alpha + beta),
             ProbabilisticValue::Samples { data } => {
@@ -53,14 +71,24 @@ impl ProbabilisticValue {
                 Some((margin / z).powi(2))
             }
             ProbabilisticValue::Discrete { values } => {
-                let mean = values.iter().map(|(_, p)| p).sum::<f64>() / values.len() as f64;
-                Some(
-                    values
-                        .iter()
-                        .map(|(_, p)| (p - mean).powi(2))
-                        .sum::<f64>()
-                        / values.len() as f64,
-                )
+                if values.is_empty() {
+                    return Some(0.0);
+                }
+                let mean = ProbabilisticValue::Discrete { values: values.clone() }.expected();
+                let total_p: f64 = values.iter().map(|(_, p)| p).sum();
+                if total_p == 0.0 {
+                    return Some(0.0);
+                }
+                // Var(X) = E[X^2] - (E[X])^2 for a weighted distribution
+                let mean_sq: f64 = values
+                    .iter()
+                    .map(|(v, p)| {
+                        let x = v.parse::<f64>().unwrap_or(0.0);
+                        (x * x) * p
+                    })
+                    .sum::<f64>()
+                    / total_p;
+                Some(mean_sq - mean * mean)
             }
             ProbabilisticValue::Beta { alpha, beta } => {
                 Some((alpha * beta) / ((alpha + beta).powi(2) * (alpha + beta + 1.0)))

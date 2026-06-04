@@ -1,10 +1,10 @@
 //! Main storage engine coordinating WAL, MemTable, and segments.
 
 use crate::{memtable::MemTable, wal::WriteAheadLog, InternalValue, RowKey, SegmentInfo};
-use cdf_common::{CdfError, FabricId, PolyRow, Result, TemporalBounds, Timestamp};
-use std::collections::HashMap;
+use cdf_common::{CdfError, FabricId, PolyRow, Result, TemporalBounds};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 
 /// Configuration for the storage engine.
@@ -34,7 +34,9 @@ pub struct StorageEngine {
     active_memtable: Arc<MemTable>,
     frozen_memtables: Arc<RwLock<Vec<Arc<MemTable>>>>,
     segments: Arc<RwLock<Vec<SegmentInfo>>>,
-    sequence: std::sync::atomic::AtomicU64,
+    /// High-watermark sequence number. Updated on every successful WAL
+    /// append (insert or delete).
+    sequence: AtomicU64,
 }
 
 impl StorageEngine {
@@ -50,6 +52,9 @@ impl StorageEngine {
                 reason: e.to_string(),
             }
         })?;
+        // Recover sequence number from WAL so that we don't restart from 1
+        // and overwrite existing entries' sequence numbers.
+        let initial_seq = wal.next_seq().saturating_sub(1);
 
         let engine = Self {
             config,
@@ -57,7 +62,7 @@ impl StorageEngine {
             active_memtable: Arc::new(MemTable::new(64 * 1024 * 1024)),
             frozen_memtables: Arc::new(RwLock::new(Vec::new())),
             segments: Arc::new(RwLock::new(Vec::new())),
-            sequence: std::sync::atomic::AtomicU64::new(1),
+            sequence: AtomicU64::new(initial_seq),
         };
 
         Ok(engine)
@@ -68,22 +73,26 @@ impl StorageEngine {
         let key = RowKey::new(table, row_id);
         let value = InternalValue::Active(row);
 
+        // Serialize BEFORE acquiring the WAL lock so we don't hold the lock
+        // across a CPU-bound encode. A failure here aborts the write cleanly.
+        let data = bincode::serialize(&value).map_err(|e| CdfError::Serialization {
+            format: "bincode".to_string(),
+            reason: e.to_string(),
+        })?;
+
         // 1. Append to WAL
         let seq = {
             let mut wal = self.wal.write().await;
             let op = crate::wal::WalOp::Insert {
                 table: table.to_string(),
                 row_id: key.row_id,
-                data: bincode::serialize(&value).unwrap_or_default(),
+                data,
             };
-            wal.append(op).map_err(|e| CdfError::WalError {
-                reason: e.to_string(),
-            })?
+            wal.append(op)?
         };
 
         // 2. Insert into MemTable
-        let _ = self
-            .active_memtable
+        self.active_memtable
             .insert(key, value)
             .map_err(|e| CdfError::Internal {
                 component: "memtable".to_string(),
@@ -95,8 +104,7 @@ impl StorageEngine {
             self.trigger_flush().await?;
         }
 
-        self.sequence
-            .store(seq, std::sync::atomic::Ordering::Relaxed);
+        self.sequence.store(seq, Ordering::Release);
         Ok(row_id)
     }
 
@@ -105,10 +113,7 @@ impl StorageEngine {
 
         // 1. Check active memtable
         if let Some(val) = self.active_memtable.get(&key) {
-            return match val {
-                InternalValue::Active(row) => Ok(Some(row)),
-                InternalValue::Tombstone { .. } => Ok(None),
-            };
+            return Ok(materialize(&val));
         }
 
         // 2. Check frozen memtables (newest first)
@@ -116,10 +121,7 @@ impl StorageEngine {
             let frozen = self.frozen_memtables.read().await;
             for memtable in frozen.iter().rev() {
                 if let Some(val) = memtable.get(&key) {
-                    return match val {
-                        InternalValue::Active(row) => Ok(Some(row)),
-                        InternalValue::Tombstone { .. } => Ok(None),
-                    };
+                    return Ok(materialize(&val));
                 }
             }
         }
@@ -136,16 +138,16 @@ impl StorageEngine {
             temporal: TemporalBounds::new(),
         };
 
-        let mut wal = self.wal.write().await;
-        wal.append(crate::wal::WalOp::Delete {
-            table: table.to_string(),
-            row_id: id,
-        })
-        .map_err(|e| CdfError::WalError {
-            reason: e.to_string(),
-        })?;
+        // 1. Append to WAL first (durable record of the delete)
+        let seq = {
+            let mut wal = self.wal.write().await;
+            wal.append(crate::wal::WalOp::Delete {
+                table: table.to_string(),
+                row_id: id,
+            })?
+        };
 
-        drop(wal);
+        // 2. Insert tombstone into MemTable
         self.active_memtable
             .insert(key, tombstone)
             .map_err(|e| CdfError::Internal {
@@ -153,26 +155,32 @@ impl StorageEngine {
                 reason: format!("{:?}", e),
             })?;
 
+        self.sequence.store(seq, Ordering::Release);
         Ok(true)
     }
 
     pub async fn scan_table(&self, table: &str) -> Result<Vec<PolyRow>> {
         let prefix = format!("{}\0", table).into_bytes();
         let mut results = Vec::new();
+        let mut seen: std::collections::HashSet<FabricId> = std::collections::HashSet::new();
 
-        // Active memtable
+        // Active memtable (newest data first)
         for (_, value) in self.active_memtable.scan(Some(&prefix), None) {
-            if let InternalValue::Active(row) = value {
-                results.push(row);
+            if let Some(row) = materialize(&value) {
+                if seen.insert(row.id) {
+                    results.push(row);
+                }
             }
         }
 
-        // Frozen memtables
+        // Frozen memtables (newest to oldest)
         let frozen = self.frozen_memtables.read().await;
-        for memtable in frozen.iter() {
+        for memtable in frozen.iter().rev() {
             for (_, value) in memtable.scan(Some(&prefix), None) {
-                if let InternalValue::Active(row) = value {
-                    results.push(row);
+                if let Some(row) = materialize(&value) {
+                    if seen.insert(row.id) {
+                        results.push(row);
+                    }
                 }
             }
         }
@@ -189,7 +197,16 @@ impl StorageEngine {
     }
 
     pub fn current_sequence(&self) -> u64 {
-        self.sequence.load(std::sync::atomic::Ordering::Relaxed)
+        self.sequence.load(Ordering::Acquire)
+    }
+}
+
+/// Convert an InternalValue reference to an Optional PolyRow, treating
+/// tombstones as deletes.
+fn materialize(val: &InternalValue) -> Option<PolyRow> {
+    match val {
+        InternalValue::Active(row) => Some(row.clone()),
+        InternalValue::Tombstone { .. } => None,
     }
 }
 
@@ -242,5 +259,60 @@ mod tests {
 
         let fetched = engine.get("test", id).await.unwrap();
         assert!(fetched.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_engine_sequence_advances() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = EngineConfig::default();
+        config.data_dir = dir.path().to_path_buf();
+        config.wal_sync = false;
+        let engine = StorageEngine::open(config).unwrap();
+
+        let initial = engine.current_sequence();
+        let id = FabricId::new();
+        engine
+            .insert(
+                "test",
+                PolyRow {
+                    id,
+                    values: Default::default(),
+                    temporal: TemporalBounds::new(),
+                    version: 1,
+                },
+            )
+            .await
+            .unwrap();
+        let after_insert = engine.current_sequence();
+        assert!(after_insert > initial, "sequence must advance after insert");
+    }
+
+    #[tokio::test]
+    async fn test_engine_scan_dedups() {
+        // Inserting the same row id twice should return it once in a scan.
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = EngineConfig::default();
+        config.data_dir = dir.path().to_path_buf();
+        config.wal_sync = false;
+        let engine = StorageEngine::open(config).unwrap();
+
+        let id = FabricId::new();
+        for _ in 0..3 {
+            engine
+                .insert(
+                    "test",
+                    PolyRow {
+                        id,
+                        values: Default::default(),
+                        temporal: TemporalBounds::new(),
+                        version: 1,
+                    },
+                )
+                .await
+                .unwrap();
+        }
+        let rows = engine.scan_table("test").await.unwrap();
+        assert_eq!(rows.len(), 1, "scan should dedup by row id");
+        assert_eq!(rows[0].id, id);
     }
 }

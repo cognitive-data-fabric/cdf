@@ -34,13 +34,16 @@ impl TemporalIndex {
         match query {
             TemporalQuery::Current => self.query_current(),
             TemporalQuery::AsOfValid(t) => self.query_as_of_valid(t),
-            _ => vec![], // TODO: full bitemporal
+            TemporalQuery::AsOfTransaction(t) => self.query_as_of_transaction(t),
+            TemporalQuery::Bitemporal { valid_time, transaction_time } => {
+                self.query_bitemporal(valid_time, transaction_time)
+            }
         }
     }
 
     fn query_current(&self) -> Vec<u64> {
-        // Return all entries with valid_time_end == forever
-        // Simplified: return last entries
+        // Return entries from the most recent transaction timestamp — these are the
+        // "latest known" state of the system.
         self.transaction_index
             .values()
             .last()
@@ -49,9 +52,31 @@ impl TemporalIndex {
     }
 
     fn query_as_of_valid(&self, t: Timestamp) -> Vec<u64> {
+        // Return sequence numbers that were valid at the given valid-time t.
         self.valid_time_index
             .range(..=t)
             .flat_map(|(_, v)| v.iter().copied())
+            .collect()
+    }
+
+    fn query_as_of_transaction(&self, t: Timestamp) -> Vec<u64> {
+        // Return all sequence numbers recorded up to and including the given
+        // transaction timestamp.
+        self.transaction_index
+            .range(..=t)
+            .flat_map(|(_, v)| v.iter().copied())
+            .collect()
+    }
+
+    fn query_bitemporal(&self, valid: Timestamp, transaction: Timestamp) -> Vec<u64> {
+        // Intersection of valid-time and transaction-time ranges.
+        let valid_results: std::collections::HashSet<u64> = self
+            .query_as_of_valid(valid)
+            .into_iter()
+            .collect();
+        self.query_as_of_transaction(transaction)
+            .into_iter()
+            .filter(|seq| valid_results.contains(seq))
             .collect()
     }
 }
